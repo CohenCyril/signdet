@@ -125,44 +125,17 @@ Qed.
 Lemma leq_Xi n (S : {set Signs n.+1}) m p : 
   (p <= m)%N -> (Xi S m) \subset (Xi S p).
 Proof.
-
 move=> lpm; apply/subsetP => /= s.
 rewrite !in_set => /existsP [/= xs /andP [uxs /'forall_implyP /= inS]].
-apply/existsP => /=.
-exists [tuple nth ord0 xs i | i < p].
+have size_tpxs : size (take p xs) == p.
+  rewrite size_take size_tuple.
+  by rewrite ltn_neqAle lpm andbT; have [->|//] := altP (p =P m).
+apply/existsP => /=; exists (Tuple size_tpxs) => /=.
 rewrite (subseq_uniq _ uxs) /=; last first.
-  
-
-(*   rewrite -topredE /=. *)
-(*   rewrite size_take. *)
-(*   rewrite size_tuple. *)
-(*   rewrite ltn_neqAle lpm andbT. *)
-(*   by case: (altP (p =P m)) => //= ->. *)
-(* rewrite (subseq_uniq _ uxs) /=; last first. *)
-(*   by rewrite -{2}(cat_take_drop p xs) prefix_subseq. *)
-(* apply/'forall_implyP => /= x xxs; apply: inS. *)
-(* move: xxs. *)
-
-(* rewrite insubdK. *)
-(* rewrite val_insubd. /insubd insub_val. *)
-
-(* rewrite . *)
-(* take_uniq. *)
-
-
-
-
-(* move=> lpm; rewrite -(subnK lpm). *)
-(* elim: (m - p)%N => [|k IHk]; first by rewrite add0n. *)
-(* rewrite addSn (subset_trans _ IHk) //; move: (k + p)%N => {IHk k p lpm m} k. *)
-(* apply/subsetP => /= s.  *)
-(* rewrite !in_set => /existsP [/= xs /andP [uxs /'forall_implyP /= inS]]. *)
-(* apply/existsP => /=. *)
-(* exists [tuple of belast xs]. *)
-
-
-(* rewrite /Xi. *)
-Admitted.
+  by rewrite -{2}(cat_take_drop p xs) prefix_subseq.
+apply/'forall_implyP => /= x /= xxs; apply: inS.
+exact: mem_take xxs.
+Qed.
 
 Fixpoint adapt n (S : {set Signs n}) : {set Expos n} :=
   match n return {set Signs n} -> {set Expos n} with
