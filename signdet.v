@@ -139,39 +139,37 @@ Qed.
 
 Fixpoint adapt n (S : {set Signs n}) : {set Expos n} :=
   match n return {set Signs n} -> {set Expos n} with
-    | 0 => fun _ => set0
-    | n'.+1 => fun S =>
-      let A m := adapt (Xi S m) in
-      (extset (0%R : 'F_3) (A 1%N)) :|:
-      (extset (1%R : 'F_3) (A 2%N)) :|:
-      (extset (2%:R : 'F_3) (A 3%N))
+    | 0 =>     fun _ => set0
+    | n'.+1 => fun S => \bigcup_(i : 'I_3) extset i (adapt (Xi S i.+1))
   end S. 
 
 Lemma adapt_monotonic : forall n (S S' : {set Signs n}),
   S \subset S' -> adapt S \subset adapt S'.
 Proof.
 elim; first by move=> S S' subSS' /=; rewrite sub0set.
-move=> n IHn S S' subSS' /=.
-by do !apply: setUSS; rewrite extsetS IHn // Xi_monotonic.
+move=> n IHn S S' subSS' /=; apply/bigcupsP => i _.
+by rewrite (bigcup_max i) // extsetS IHn // Xi_monotonic.
 Qed.
 
+Definition restrict n (b : {ffun 'I_n.+1 -> 'I_3}) :=
+  [ffun i : 'I_n => b (lift ord_max i)].
 
 Lemma adapt_downward_closed n (S : {set Signs n}) (a b : Expos n) :
   (forall i, b i <= a i)%N -> a \in adapt S -> b \in adapt S.
 Proof.
-elim: n => [|/= n IHn] in S a b *; first by rewrite in_set0.
-  move=> leq_ba.
-  set a' := [ffun i => if i == ord_max then b i else a i].
+elim: n => [|n IHn] in S a b *; first by rewrite in_set0.
+move=> /= leq_ba /bigcupP /= [i _] /imsetP /= [a1 a1A a_def].
+rewrite a_def in leq_ba * => {a_def a}.
+apply/bigcupP; exists (b ord_max) => //.
+apply/imsetP; exists (restrict b); last first.
+  apply/ffunP => j. rewrite ffunE.
+  by case: unliftP => [k|] -> //; rewrite ffunE.
+apply: (IHn _ a1) => [j|].
+  by rewrite ffunE (leq_trans (leq_ba _)) // ffunE liftK.
+apply: subsetP (adapt_monotonic _) _ a1A.
+by rewrite leq_Xi // ltnS (leq_trans (leq_ba _)) // ffunE unlift_none.
+Qed.
 
-  have := leq_ba ord_max.
-  case: (a ord_max) => [[|[|[|//]]]] leqa3 /=.
-    rewrite leqn0.
-
-
-  (* move=> leq_ba; rewrite !in_set /= -orbA. *)
-  (* case/or3P. *)
-Admitted.
-  
 
 Lemma adapt_adapted n (S : {set Signs n}) : adapted S (adapt S).
 Proof.
