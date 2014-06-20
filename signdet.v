@@ -153,29 +153,15 @@ Fixpoint adapt n (S : {set Signs n}) : {set Expos n} :=
     | n'.+1 => fun S => \bigcup_(i : 'I_3) extset i (adapt (Xi S i.+1))
   end S. 
 
-(* Fixpoint adapt n (S : {set Signs n}) : {set Expos n} := *)
-(*   match n return {set Signs n} -> {set Expos n} with *)
-(*     | 0 => fun _ => set0 *)
-(*     | n'.+1 => fun S => *)
-(*       let A m := adapt (Xi S m) in *)
-(*       (extset (0%R : 'F_3) (A 1%N)) :|: *)
-(*       (extset (1%R : 'F_3) (A 2%N)) :|: *)
-(*       (extset (2%:R%R : 'F_3) (A 3%N)) *)
-(*   end S.  *)
-
-Lemma adapt_monotonic : forall n (S S' : {set Signs n}),
+Lemma adapt_monotonic n (S S' : {set Signs n}) :
   S \subset S' -> adapt S \subset adapt S'.
 Proof.
-elim; first by move=> S S' subSS' /=; rewrite sub0set.
-move=> n IHn S S' subSS' /=; apply/bigcupsP => i _.
+elim: n => [//|n IHn] in S S' * => subSS' /=; apply/bigcupsP => i _.
 by rewrite (bigcup_max i) // extsetS IHn // Xi_monotonic.
 Qed.
 
 Definition restrict n (b : {ffun 'I_n.+1 -> 'I_3}) : {ffun 'I_n -> 'I_3} :=
   [ffun i => b (lift ord_max i)].
-
-(* Lemma restrict_monotonic n (a b : {ffun 'I_n.+1 -> 'I_3}) : *)
-(*   forall i  *)
 
 Lemma restrictK n (b : {ffun 'I_n.+1 -> 'I_3}) :
   extelt (b ord_max) (restrict b) = b.
@@ -269,20 +255,20 @@ apply : adapt_monotonic.
 apply : leq_Xi.
 rewrite ltnS.
 by apply : leq_ba.
+Restart. (* Alternative direct proof. *)
+elim: n => [|n IHn] in S a b *.
+  by rewrite (fintype1 b) // card_ffun !card_ord.
+move=> /= leq_ba /bigcupP /= [i _] /imsetP /= [a1 a1A a_def].
+rewrite a_def in leq_ba * => {a_def a}.
+apply/bigcupP; exists (b ord_max) => //.
+apply/imsetP; exists (restrict b); last first.
+  apply/ffunP => j. rewrite ffunE.
+  by case: unliftP => [k|] -> //; rewrite ffunE.
+apply: (IHn _ a1) => [j|].
+  by rewrite ffunE (leq_trans (leq_ba _)) // ffunE liftK.
+apply: subsetP (adapt_monotonic _) _ a1A.
+by rewrite leq_Xi // ltnS (leq_trans (leq_ba _)) // ffunE unlift_none.
 Qed.
-(* (* Alternative direct proof. *) *)
-(* elim: n => [|n IHn] in S a b *; first by rewrite in_set0. *)
-(* move=> /= leq_ba /bigcupP /= [i _] /imsetP /= [a1 a1A a_def]. *)
-(* rewrite a_def in leq_ba * => {a_def a}. *)
-(* apply/bigcupP; exists (b ord_max) => //. *)
-(* apply/imsetP; exists (restrict b); last first. *)
-(*   apply/ffunP => j. rewrite ffunE. *)
-(*   by case: unliftP => [k|] -> //; rewrite ffunE. *)
-(* apply: (IHn _ a1) => [j|]. *)
-(*   by rewrite ffunE (leq_trans (leq_ba _)) // ffunE liftK. *)
-(* apply: subsetP (adapt_monotonic _) _ a1A. *)
-(* by rewrite leq_Xi // ltnS (leq_trans (leq_ba _)) // ffunE unlift_none. *)
-
 
 Lemma card_adapt n (S : {set Signs n}) : #|adapt S| = #|S|.
 Proof.
@@ -304,13 +290,14 @@ elim: n S.
   apply/matrixP => i j; rewrite !mxE big_ord0.
   by rewrite S1 in i j *; rewrite !ord1 eqxx.
 move=> n IHn S; rewrite /adapted {1}card_adapt eqxx // andTb.
-rewrite -kermx_eq0; apply/eqP.
-have : mat S (adapt S)  col_mx (mat (Xi S 1) ()
-
-
-suff: forall (L : ), L *m mat S (adapt S) = 0%R ->  L = 0%R.
-  by move=> Hmat; rewrite -kermx_eq0; apply/eqP/Hmat/sub_kermxP.
-move=> 
+(* rewrite -kermx_eq0; apply/eqP. *)
+(* have : mat S (adapt S)  col_mx (mat (Xi S 1) () *)
+suff: forall (L : 'rV__), L *m mat S (adapt S) = 0%R ->  L = 0%R.
+  move=> Hmat; rewrite -kermx_eq0; apply/eqP. 
+  apply/row_matrixP => i; rewrite row0; apply/Hmat.
+  by apply/sub_kermxP; rewrite row_sub.
+move=> L.
+move/matrixP.
 
 
 
