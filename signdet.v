@@ -181,7 +181,7 @@ rewrite i_def.
 done.
 Qed.
 
-Lemma exteltK  n (b : {ffun 'I_n -> 'I_3}) (x : 'I_3) :
+Lemma exteltK  n (x : 'I_3)  (b : {ffun 'I_n -> 'I_3}) :
   restrict (extelt x b) = b.
 Proof.
 apply/ ffunP.
@@ -297,40 +297,191 @@ suff: forall (L : 'rV__), L *m mat S (adapt S) = 0%R ->  L = 0%R.
   apply/row_matrixP => i; rewrite row0; apply/Hmat.
   by apply/sub_kermxP; rewrite row_sub.
 move=> L.
-move/matrixP.
+move/rowP.
+(* apply/row_freeP => /=. *)
+(*   rewrite /mat. *)
 
+(*   move/set0Pn => [x]. *)
 
-
-apply/row_freeP => /=.
-  rewrite /mat.
-
-  move/set0Pn => [x].
-
-  have : #|S| <= 1.
-    rewrite (@leq_trans #|[set: Signs 0]|) // ?subset_leqif_card ?subsetT //.
-    by rewrite cardsT card_ffun !card_ord.
+(*   have : #|S| <= 1. *)
+(*     rewrite (@leq_trans #|[set: Signs 0]|) // ?subset_leqif_card ?subsetT //. *)
+(*     by rewrite cardsT card_ffun !card_ord. *)
   
      
-    have /subset_leqif_cards := subsetT S.
-    rewrite cardsT card_ffun.
-    rewrite !card_ord expn0.
-    apply/eqP.
-    rewrite -leqn0.
+(*     have /subset_leqif_cards := subsetT S. *)
+(*     rewrite cardsT card_ffun. *)
+(*     rewrite !card_ord expn0. *)
+(*     apply/eqP. *)
+(*     rewrite -leqn0. *)
     
-    rewrite card_ffun.
-  move: (mat _ _).
-  rewrite cards0.
-  rewrite unitmxE.
-  rewrite det_mx00.
-  About cards0.
-  have: S = set0.
-    admit.
-  case: _ /.
-  rewrite eqxx.
-  rewrite conform_mx_id.
+(*     rewrite card_ffun. *)
+(*   move: (mat _ _). *)
+(*   rewrite cards0. *)
+(*   rewrite unitmxE. *)
+(*   rewrite det_mx00. *)
+(*   About cards0. *)
+(*   have: S = set0. *)
+(*     admit. *)
+(*   case: _ /. *)
+(*   rewrite eqxx. *)
+(*   rewrite conform_mx_id. *)
 
-  rewrite cards0.
+(*   rewrite cards0. *)
+(* Qed. *)
+Admitted.
+
+Lemma bump_small n i : i < n -> bump n i = i.
+Proof. by move=> ltin; rewrite /bump leqNgt ltin add0n. Qed.
+
+Lemma extelt_small (X : finType) (x : X) n (i : 'I_n.+1) 
+  (b : {ffun 'I_n -> X}) (lt_in : i < n) :
+  (extelt x b) i = b (Ordinal lt_in).
+Proof.
+rewrite ffunE.
+case: unliftP.
+  move=> j i_def.
+  congr (b _).
+  apply: val_inj => /=.
+  by rewrite i_def /= bump_small.
+move=> i_def; suff: false by [].
+by rewrite i_def ltnn in lt_in *.
 Qed.
+  
+
+Lemma lift_ord_max n (i : 'I_n) :
+   lift ord_max i = widen_ord (leqnSn n) i.
+Proof. by apply: val_inj=> /=; rewrite bump_small. Qed.
+
+Lemma prop1084 n (S : {set Signs n}) a :
+ a \in adapt S -> 2 ^ #|[set i : 'I_n | a(i) != 0%R]| <= #|S|.
+Proof.
+move=> a_adapt.
+About leq_trans.
+apply: (@leq_trans #|[set b : Expos n
+ | [forall i, (b i == 0%R) || (b i == a i)]]|); last first.
+Search (_ <= _) (_ \subset _).
+  rewrite -(card_adapt S).
+  apply : subset_leq_card.
+About subsetP.
+Search _ ([set _ : _ | _]) in finset.
+  apply/ subsetP.
+  move=> b.
+Search _ (_ \in _) (finset) in finset.
+  rewrite in_set.
+  move/forallP.
+  move=> bP.
+About adapt_down_closed  .
+  apply : adapt_down_closed a_adapt.
+  move=> i.
+  have := bP i.
+  move/orP.
+  case.
+    move/eqP.
+    move=> bi0.
+    by rewrite bi0.
+  move/eqP.
+  move=> eqba.
+  by rewrite eqba.
+move=> {a_adapt S}.
+elim: n a=> /=.
+  Search _ (set0) in finset.
+  move=> a.
+  have: #|[set i : 'I_0| a i != 0%R]| <= #|[set: 'I_0]|.
+    About subsetT.
+    apply : subset_leq_card.
+    by apply : subsetT.
+  Search _ #|_| [set: _] in finset.
+  rewrite cardsT /= card_ord leqn0.
+  move/eqP => ->.
+  rewrite expn0.
+  have : #|[set b : Expos 0
+          | [forall i, (b i == 0%R) || (b i == a i)]]| == 1.
+    apply/cards1P.
+    exists [ffun _ => 0%R].
+    apply/setP.
+    move=> b.
+    have F1 : #|{ffun 'I_0 -> 'I_3}| = 1.
+      by rewrite card_ffun !card_ord expn0.
+    rewrite !(fintype1 [ffun _ : 'I_0 => 0%R : 'I_3] F1).
+    rewrite in_set1 eqxx in_set.
+    by apply/forallP => [[]].
+  by move/eqP->.  
+move=> n IHn a.
+have -> : #|[set i | a i != 0%R]| =
+   #|[set i | restrict a i != 0%R]| + (a ord_max != 0%R).
+    rewrite -!sum1_card.
+    rewrite big_mkcond [in RHS]big_mkcond /=.
+    rewrite big_ord_recr /=.
+    rewrite in_set.
+    congr (_ + _).
+    apply: eq_bigr => i _.
+    rewrite !in_set ffunE.
+    by rewrite lift_ord_max.
+(* have :  *)
+(*    \bigcup_(i in [set ord0; a ord_max]) *)
+(*     [set (extelt i b)  *)
+(*     | b in [set b : {ffun 'I_n -> 'I_3} *)
+(*            | [forall i, (b i == 0%R) || (b i == restrict a i)]]] *)
+(*    \subset [set b : {ffun 'I_n.+1 -> 'I_3} *)
+(*        | [forall i, (b i == 0%R) || (b i == a i)]]. *)
+(*   admit. *)
+
+(* :|: [set (extelt (a i) b) | b in [forall i, (b i == 0) || (b i == a i)]]. *)
+(*      <= 2 ^ (a ord_max != 0%R) * *)
+(*        #|[set b | [forall i, (b i == 0) || (b i == a i)]]|) *)
+have [amax0|] := eqVneq (a ord_max) 0%R.
+  rewrite amax0 addn0.
+  rewrite (leq_trans (IHn _)) //.
+  rewrite -(card_imset _ (can_inj (exteltK ord0))).
+  apply: subset_leq_card.
+  apply/subsetP=> b.
+  rewrite !in_set.
+  move/imsetP => /= [b1].
+  rewrite in_set => /forallP /= b1P -> {b}.
+  apply/forallP=> /= i.
+  have [->|iNmax] := eqVneq i ord_max.
+    by rewrite extelt_ord_max eqxx.
+  have lt_in : i < n.
+    by rewrite ltn_neqAle leq_ord iNmax.
+  have /= := b1P (Ordinal lt_in).
+  rewrite extelt_small !ffunE /=.
+  suff -> : lift ord_max (Ordinal lt_in) = i by [].
+  by apply: val_inj => /=; rewrite bump_small.
+move=> amaxN0.
+rewrite amaxN0 addn1 expnS.
+suff : #|[set b : {ffun 'I_n.+1 -> 'I_3}| [forall i, (b i == 0%R) || (b i == a i)]]|
+  >= 2 * #|[set b : {ffun 'I_n -> 'I_3}| [forall i, (b i == 0%R) || (b i == restrict a i)]]|.
+  by move=> /(leq_trans _) -> //; rewrite leq_mul2l /= IHn.
+pose B i :=  [set b : {ffun 'I_n.+1 -> 'I_3}
+            | [forall i, (restrict b i == 0%R) || (restrict b i == restrict a i)] && (b ord_max == i)].
+
+have Beq i : 
+ #|[set b : {ffun 'I_n -> 'I_3}
+   | [forall i, (b i == 0%R) || (b i == (restrict a) i)]]| = #|B i|.
+  admit.
+suff -> : [set b : {ffun 'I_n.+1 -> 'I_3}| [forall i, (b i == 0%R) || (b i == a i)]] = B 0%R  :|: B (a ord_max).
+  rewrite cardsU.
+  rewrite [#|_ :&: _|]eq_card0; last first.
+    move=> b; rewrite in_setI !in_set -!andbA.
+    apply: negbTE; apply/negP.
+    move => /and4P [_ /eqP -> _].
+    by rewrite eq_sym (negPf amaxN0).
+  rewrite subn0.
+  rewrite mul2n leq_add -?Beq //.
+
+  (*   r *)
+  (* rewrite leq_card_setU. *)
+  
+  
+  (* case: unliftP. *)
+
+  (* rewrite -!sum1_card. *)
+  (* rewrite big_mkcond [X in _ <= X]big_mkcond /=. *)
+  (* rewrite big_ord_recl. *)
+  
+Admitted.
+
+
 
 (* Fixpoint adapt n (S : {set Signs n}) : {set Expos n} := *)
 (*   match n return {set Signs n} -> {set Expos n} with *)
