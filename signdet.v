@@ -34,46 +34,26 @@ End extrassr.
 
 Section SignDet.
 
-(* Set Printing All. *)
-
-(* Fixpoint signdet (n : nat) (taq : ('I_n -> 'I_3) -> int) {struct n} : *)
-(*   {m : nat & (m.-tuple 'I_3 * m.-tuple 'I_3 * 'M[int]_m)%type} := *)
-(*   match n with *)
-(*     | 0     => (existT _ 0 ([tuple], [tuple], 0%R)) *)
-(*     | n'.+1 =>  *)
-(*       let taq' (f : 'I_n' -> 'I_3) :=  *)
-(*             taq (fun (i : 'I_n) =>  *)
-(*                    if (i < n') =P true is ReflectT P *)
-(*                    then f (Ordinal P) else ord0) in *)
-(*       let: existT m (sc, ada, M) := signdet taq' in *)
-
-(*                (existT _ 0 ([tuple], [tuple], 0%R)) *)
-(*   end. *)
-
-Definition exp X n := {ffun 'I_n -> X}.
-Definition Signs n := exp 'I_3 n.
-Definition Expos n := exp 'I_3 n.
-
-Definition extelt n (X : finType) (x : X) (s : exp X n) : exp X n.+1 :=
+Definition extelt n (X : finType) (x : X) (s : X ^ n) : X ^ n.+1 :=
   [ffun i => if unlift ord_max i is Some j then s j else x].
 
-Definition restrict n (X : finType) (b : exp X n.+1) : exp X n :=
+Definition restrict n (X : finType) (b : X ^ n.+1) : X ^ n :=
   [ffun i => b (lift ord_max i)].
 
-Lemma restrictK n (X : finType) (b : exp X n.+1) :
+Lemma restrictK n (X : finType) (b : X ^ n.+1) :
   extelt (b ord_max) (restrict b) = b.
 Proof.
 by apply/ffunP=> i; rewrite ffunE; case: unliftP => [j|] ->; rewrite ?ffunE.
 Qed.
 
-Lemma exteltK n (X : finType) (x : X) (b : exp X n) : restrict (extelt x b) = b.
+Lemma exteltK n (X : finType) (x : X) (b : X ^ n) : restrict (extelt x b) = b.
 Proof. by apply/ffunP=> i; rewrite !ffunE liftK. Qed.
 
-Lemma extelt_ord_max  n (X : finType) (x : X) (s : exp X n) :
+Lemma extelt_ord_max  n (X : finType) (x : X) (s : X ^ n) :
   (extelt x s) ord_max = x.
 Proof. by rewrite /extelt ffunE unlift_none. Qed.
 
-Lemma eq_extelt n (X : finType) (x x' : X) (s s' : exp X n) :
+Lemma eq_extelt n (X : finType) (x x' : X) (s s' : X ^ n) :
   (extelt x s == extelt x' s') = (x == x') && (s == s').
 Proof.
 apply/eqP/idP; last by move=> /andP [/eqP -> /eqP ->].
@@ -83,31 +63,58 @@ apply/eqP/ffunP => i; have := eqss' (lift ord_max i).
 by rewrite !ffunE liftK.
 Qed.
 
-Definition extset n (X : finType) (x : X) (S : {set exp X n}) :
-   {set exp X n.+1} :=  [set extelt x s | s in S].
+Definition extset n (X : finType) (x : X) (S : {set X ^ n}) :
+   {set X ^ n.+1} :=  [set extelt x s | s in S].
 
-Lemma mem_extset n (X : finType) (x : X) s (S : {set exp X n}) :
-  extelt x s \in extset x S = (s \in S).
+Lemma mem_extset n (X : finType) (x x' : X) s (S : {set X ^ n}) :
+  extelt x s \in extset x' S = (x == x') && (s \in S).
 Proof.
-apply/imsetP/idP => /= [[s' s'S /eqP]|sS]; last by exists s.
-by rewrite (inj_eq (can_inj (exteltK _))) => /eqP ->.
+apply/imsetP/idP => /= [[s' s'S /eqP]|/andP [/eqP<-]]; last by exists s.
+by rewrite eq_extelt => /andP [-> /eqP ->].
 Qed.
 
-Lemma subset_ext n (X : finType) (x : X) (S S' : {set exp X n}) :
+Lemma mem_extset_r n (X : finType) (x : X) s (S : {set X ^ n}) :
+  extelt x s \in extset x S = (s \in S).
+Proof. by rewrite mem_extset eqxx. Qed.
+
+Lemma extset0 n (X : finType) (x : X) : extset x set0 = set0 :> {set X ^ n.+1}.
+Proof. by rewrite /extset imset0. Qed.
+
+Lemma extset_eq0 n (X : finType) (x : X) (S : {set X ^ n}) :
+  (extset x S == set0) = (S == set0).
+Proof.
+apply/eqP/eqP => [ext_eq0|->]; last by rewrite extset0.
+by apply/setP => s; rewrite -(mem_extset_r x) ext_eq0 !in_set0.
+Qed.
+
+Lemma eq_extset n (X : finType) (x y : X) (S S' : {set X ^ n}) :
+  (extset x S == extset y S') = ((S != set0) ==> (x == y)) && (S == S').
+Proof.
+apply/eqP/idP => [|/andP [/implyP eq_xy /eqP<- //]]; last first.
+  case: (altP eqP) eq_xy => [-> _|_ /(_ isT) /eqP -> //].
+  by rewrite /extset !imset0.
+have [-> /eqP|/set0Pn [s mem_s] eq_exts] /= := altP (S =P set0).
+  by rewrite eq_sym extset0 extset_eq0 => /eqP ->.
+move: mem_s; rewrite -(mem_extset_r x) eq_exts mem_extset => /andP [eq_xy _].
+rewrite -(eqP eq_xy) {eq_xy y s} eqxx /= in eq_exts *.
+by apply/eqP/setP => s; rewrite -(mem_extset_r x) eq_exts mem_extset_r.
+Qed.
+
+Lemma subset_ext n (X : finType) (x : X) (S S' : {set X ^ n}) :
   (extset x S \subset extset x S') = (S \subset S').
 Proof.
 apply/subsetP/subsetP => SS' s.
-  by move/(mem_imset (extelt x))/SS'; rewrite mem_extset.
-by case/imsetP=> s' s'S ->; rewrite mem_extset SS'.
+  by move/(mem_imset (extelt x))/SS'; rewrite mem_extset_r.
+by case/imsetP=> s' s'S ->; rewrite mem_extset_r SS'.
 Qed.
 
-Definition tvec (n : nat) (taq : ('I_n -> 'I_3) -> int) (a : {set Expos n}) :
-   'rV[int]_(#|a|).
-Admitted.
+(* Definition tvec (n : nat) (taq : ('I_n -> 'I_3) -> int) (a : {set Expos n}) : *)
+(*    'rV[int]_(#|a|). *)
+(* Admitted. *)
 
-Definition cnonnull (n m : nat) (s : {set Signs n}) (c : 'rV[int]_(3 * m)) :
-   {set Expos n}. (* morally m = #|s| *)
-Admitted.
+(* Definition cnonnull (n m : nat) (s : {set Signs n}) (c : 'rV[int]_(3 * m)) : *)
+(*    {set Expos n}. (* morally m = #|s| *) *)
+(* Admitted. *)
 
 Definition ctmat1 := (\matrix_(i < 3, j < 3)
   (nth [::] [:: [:: 1%:Z ; 1 ; 1 ]
@@ -118,11 +125,11 @@ Definition ctmat1 := (\matrix_(i < 3, j < 3)
 Lemma mul2n n : (2 * n = n + n)%N. Proof. by rewrite mulSn mul1n. Qed.
 Lemma mul3n n : (3 * n = n + (n + n))%N. Proof. by rewrite !mulSn addn0. Qed.
 
-Definition lexi n (S : {set exp 'I_3 n}) : 'I_(#|S|) -> exp 'I_3 n :=
-  enum_val.
+(* Definition lexi n (S : {set 'I_3 ^ n}) : 'I_(#|S|) -> 'I_3 ^ n := *)
+(*   enum_val. *)
 
-Lemma lexiP n (S : {set exp 'I_3 n}) (i :'I_(#|S|)) : lexi i \in S.
-Proof. exact: enum_valP. Qed.
+(* Lemma lexiP n (S : {set 'I_3 ^ n}) (i :'I_(#|S|)) : lexi i \in S. *)
+(* Proof. exact: enum_valP. Qed. *)
 
 
 (* Lemma unlexiK n (s : {set exp 'I_3 n}) : *)
@@ -134,30 +141,14 @@ Proof. exact: enum_valP. Qed.
 (* Proof. *)
 (* apply/eqP/idP => [<-|]. *)
 
-
-
-Definition sign (i : 'I_3) : int :=
-  if i == ord0 then 0%R else if i == ord_max then -1%R else 1%R.
-Definition expo (i : 'I_3) : nat :=
-  if i == ord0 then 0%N else if i == ord_max then 2%N else 1%N.
-
-Definition mat_coef n (i : Signs n) (j : Expos n) :=
-  (\prod_k (sign (i k)) ^+ (expo (j k)))%:Q%R.
-
-Definition mat n (s : {set Signs n}) (a : {set Expos n}) :
-  'M[rat]_(#|s|, #|a|) := \matrix_(i,j) mat_coef (enum_val i) (enum_val j).
-
-Definition adapted n (s : {set Signs n}) (a : {set Expos n}) :=
-  (#|s| == #|a|) && row_free (mat s a).
-
 (* Definition subst  X (P : X -> Type) (x y : X) (e : x = y) : P x -> P y := *)
 (*   let: erefl := e in id. *)
 
-Definition Xi n (X : finType) (S : {set exp X n.+1}) m :=
-  [set s : exp X n
+Definition Xi n (X : finType) (S : {set X ^ n.+1}) (m : nat) :=
+  [set s : X ^ n
   | [exists xs : m.-tuple X, uniq xs && [forall x in xs, extelt x s \in S]]].
 
-Lemma Xi_monotonic n (X : finType) (S S' : {set exp X n.+1}) m :
+Lemma Xi_monotonic n (X : finType) (S S' : {set X ^ n.+1}) m :
   S \subset S' -> Xi S m \subset Xi S' m.
 Proof.
 move=> /subsetP subSS'; apply/subsetP => /= s; rewrite !in_set.
@@ -166,7 +157,7 @@ apply/existsP; exists xs; rewrite uxs //=.
 by apply/'forall_implyP => /= x xxs; rewrite subSS' ?HS.
 Qed.
 
-Lemma leq_Xi n (X : finType) (S : {set exp X n.+1}) m p :
+Lemma leq_Xi n (X : finType) (S : {set X ^ n.+1}) m p :
   (p <= m)%N -> (Xi S m) \subset (Xi S p).
 Proof.
 move=> lpm; apply/subsetP => /= s.
@@ -180,6 +171,25 @@ rewrite (subseq_uniq _ uxs) /=; last first.
 apply/'forall_implyP => /= x /= xxs; apply: inS.
 exact: mem_take xxs.
 Qed.
+
+
+Notation Signs n := ('I_3 ^ n)%type.
+Notation Expos n := ('I_3 ^ n)%type.
+
+Definition sign (i : 'I_3) : int :=
+  if i == ord0 then 0%R else if i == ord_max then -1%R else 1%R.
+Definition expo (i : 'I_3) : nat :=
+  if i == ord0 then 0%N else if i == ord_max then 2%N else 1%N.
+
+Definition mat_coef n (i : Signs n) (j : Expos n) :=
+  (\prod_k (sign (i k)) ^+ (expo (j k)))%:Q%R.
+
+Definition mat n (s : {set Signs n}) (a : {set Expos n}) : 
+  'M[rat]_(#|s|, #|a|) :=
+    \matrix_(i,j) mat_coef (enum_val i) (enum_val j).
+
+Definition adapted n (s : {set Signs n}) (a : {set Expos n}) :=
+  (#|s| == #|a|) && row_free (mat s a).
 
 Fixpoint adapt n (S : {set Signs n}) : {set Expos n} :=
   match n return {set Signs n} -> {set Expos n} with
@@ -199,7 +209,7 @@ Lemma in_adapt  n (S : {set Signs n.+1}) (a : Expos n.+1) :
 Proof.
 move=> /=; apply/bigcupP/idP => [[i _ /imsetP [s sAXi ->]]|].
   by rewrite exteltK extelt_ord_max.
-by move=> raAXi; exists (a ord_max); rewrite // -{1}[a]restrictK mem_extset.
+by move=> raAXi; exists (a ord_max); rewrite // -{1}[a]restrictK mem_extset_r.
 Qed.
 
 Lemma adapt_down_closed  n (S : {set Signs n}) (a b : Expos n) :
@@ -211,7 +221,9 @@ move=> leq_ba; rewrite !in_adapt => raAXi.
 have: restrict b \in adapt (Xi S (a ord_max).+1).
   by apply: IHn raAXi => i; rewrite !ffunE leq_ba.
 by apply: subsetP; rewrite adapt_monotonic ?leq_Xi ?ltnS ?leq_ba.
+
 Restart. (* Alternative direct proof. *)
+
 elim: n => [|n IHn] in S a b *.
   by rewrite (fintype1 b) // card_ffun !card_ord.
 move=> /= leq_ba /bigcupP /= [i _] /imsetP /= [a1 a1A a_def].
@@ -229,7 +241,27 @@ Qed.
 
 Lemma card_adapt n (S : {set Signs n}) : #|adapt S| = #|S|.
 Proof.
-elim: n => [//|n IHn] /= in S *.
+elim: n => [//|n IHn] /= in S *; rewrite -cover_imset.
+set P := (X in cover X); have /eqP <- : trivIset P.
+  apply/trivIsetP => /= A B /imsetP [i _ ->] /imsetP [j _ ->].
+  have [->|neq_ij _] := eqVneq i j; first by rewrite eqxx.
+  rewrite -setI_eq0; apply: contraNT neq_ij => /set0Pn /= [e].
+  rewrite inE => /andP [/imsetP [ei _ ->] /imsetP [ej _]] /eqP.
+  by rewrite eq_extelt => /andP [].
+rewrite big_imset /=; last first.
+  move=> i j _ _ /= /eqP.
+  rewrite eq_extset.
+
+  
+
+
+transitivity #|cover [set extset i (adapt (Xi S i.+1)) | i : 'I_3]|.
+  apply: eq_card => /= E; apply/bigcupP/bigcupP => /= [[i _ memE]|[A]].
+    by exists (extset i (adapt (Xi S i.+1))); first by apply: mem_imset.
+  by move=> /imsetP [i _ ->] memE; exists i.
+rewrite leq_card_cover.
+
+rewrite -card_partition.
 admit.
 Qed.
 
@@ -312,11 +344,11 @@ rewrite (reindex_onto (enum_rank_in s0S) enum_val) //=; last first.
 rewrite (eq_bigl _ _ (enum_rank_in_id _)).
 rewrite (eq_bigr (fun i =>
   (L ord0 (enum_rank_in s0S i))%:M *m \row_j mat_coef i (enum_val j)%R)); last first.
-  by move=> i iS; rewrite enum_rankK_in.
+  by move=> i iS; rewrite enum_rankK_in. 
 Admitted.
 
 Lemma extelt_small (X : finType) (x : X) n (i : 'I_n.+1)
-  (b : exp X n) (lt_in : i < n) :
+  (b : X ^ n) (lt_in : i < n) :
   (extelt x b) i = b (Ordinal lt_in).
 Proof.
 rewrite ffunE; case: unliftP=> [j|] i_def; last first.
