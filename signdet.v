@@ -1,6 +1,6 @@
 Require Import ssreflect ssrfun ssrbool eqtype ssrnat seq choice path fintype finset finfun.
 Require Import div bigop ssralg poly polydiv ssrnum perm zmodp ssrint rat tuple.
-Require Import interval matrix mxtens mxalgebra.
+Require Import interval matrix mxtens mxalgebra binomial.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -29,6 +29,52 @@ Proof. by move=> ltin; rewrite /bump leqNgt ltin add0n. Qed.
 Lemma lift_ord_max n (i : 'I_n) :
    lift ord_max i = widen_ord (leqnSn n) i.
 Proof. by apply: val_inj=> /=; rewrite bump_small. Qed.
+
+Lemma cards_draws (T : finType) (B : {set T}) k :
+  #|[set A : {set T} | A \subset B & #|A| == k]| = 'C(#|B|, k).
+Proof.
+have [ltTk | lekT] := ltnP #|B| k.
+  rewrite bin_small // eq_card0 // => A.
+  rewrite inE eqn_leq [k <= _]leqNgt.
+  have [AsubB /=|//] := boolP (A \subset B).
+  by rewrite (leq_ltn_trans (subset_leq_card AsubB)) ?andbF.
+apply/eqP; rewrite -(eqn_pmul2r (fact_gt0 k)) bin_ffact // eq_sym.
+rewrite -sum_nat_dep_const -{1 3}(card_ord k).
+rewrite -card_inj_ffuns_on -sum1dep_card.
+pose imIk (f : {ffun 'I_k -> T}) := f @: 'I_k.
+rewrite (partition_big imIk (fun A => (A \subset B) && (#|A| == k))) /=
+  => [|f]; last first.
+  move=> /andP [/ffun_onP f_ffun /injectiveP inj_f].
+  rewrite card_imset ?card_ord // eqxx andbT.
+  by apply/subsetP => x /imsetP [i _ ->]; rewrite f_ffun.
+apply/eqP; apply: eq_bigr => A /andP [AsubB /eqP cardAk].
+have [f0 inj_f0 im_f0]: exists2 f, injective f & f @: 'I_k = A.
+  rewrite -cardAk; exists enum_val; first exact: enum_val_inj.
+  apply/setP=> a; apply/imsetP/idP=> [[i _ ->] | Aa]; first exact: enum_valP.
+  by exists (enum_rank_in Aa a); rewrite ?enum_rankK_in.
+rewrite (reindex (fun p : {ffun _} => [ffun i => f0 (p i)])) /=; last first.
+  pose ff0' f i := odflt i [pick j | f i == f0 j].
+  exists (fun f => [ffun i => ff0' f i]) => [p _ | f].
+    apply/ffunP=> i; rewrite ffunE /ff0'; case: pickP => [j | /(_ (p i))].
+      by rewrite ffunE (inj_eq inj_f0) => /eqP.
+    by rewrite ffunE eqxx.
+  rewrite -im_f0 => /andP[/andP[/ffun_onP f_ffun /injectiveP injf] /eqP im_f].
+  apply/ffunP=> i; rewrite !ffunE /ff0'; case: pickP => [y /eqP //|].
+  have /imsetP[j _ eq_f0j_fi]: f i \in f0 @: 'I_k by rewrite -im_f mem_imset.
+  by move/(_ j)=> /eqP[].
+rewrite -ffactnn -card_inj_ffuns -sum1dep_card; apply: eq_bigl => p.
+rewrite -andbA.
+apply/and3P/injectiveP=> [[_ /injectiveP inj_f0p _] i j eq_pij | inj_p].
+  by apply: inj_f0p; rewrite !ffunE eq_pij.
+set f := finfun _.
+have injf: injective f by move=> i j; rewrite !ffunE => /inj_f0; exact: inj_p.
+have imIkf : imIk f == A.
+  rewrite eqEcard card_imset // cardAk card_ord leqnn andbT -im_f0.
+  by apply/subsetP=> x /imsetP[i _ ->]; rewrite ffunE mem_imset.
+split; [|exact/injectiveP|exact: imIkf].
+apply/ffun_onP => x; apply: (subsetP AsubB).
+by rewrite -(eqP imIkf) mem_imset.
+Qed.
 
 End extrassr.
 
@@ -145,8 +191,8 @@ Lemma mul3n n : (3 * n = n + (n + n))%N. Proof. by rewrite !mulSn addn0. Qed.
 (*   let: erefl := e in id. *)
 
 Definition Xi n (X : finType) (S : {set X ^ n.+1}) (m : nat) :=
-  [set s : X ^ n
-  | [exists xs : m.-tuple X, uniq xs && [forall x in xs, extelt x s \in S]]].
+  [set s : X ^ n | [exists E : {set X}, (#|E| == m)
+                   && [forall x in E, extelt x s \in S]]].
 
 Lemma Xi_monotonic n (X : finType) (S S' : {set X ^ n.+1}) m :
   S \subset S' -> Xi S m \subset Xi S' m.
@@ -161,17 +207,12 @@ Lemma leq_Xi n (X : finType) (S : {set X ^ n.+1}) m p :
   (p <= m)%N -> (Xi S m) \subset (Xi S p).
 Proof.
 move=> lpm; apply/subsetP => /= s.
-rewrite !in_set => /existsP [/= xs /andP [uxs /'forall_implyP /= inS]].
-have size_tpxs : size (take p xs) == p.
-  rewrite size_take size_tuple.
-  by rewrite ltn_neqAle lpm andbT; have [->|//] := altP (p =P m).
-apply/existsP => /=; exists (Tuple size_tpxs) => /=.
-rewrite (subseq_uniq _ uxs) /=; last first.
-  by rewrite -{2}(cat_take_drop p xs) prefix_subseq.
-apply/'forall_implyP => /= x /= xxs; apply: inS.
-exact: mem_take xxs.
+rewrite !in_set => /existsP [/= E /andP [/eqP cardE /'forall_implyP /= inS]].
+have /set0Pn [A] : [set A : {set X} | A \subset E & #|A| == p] != set0.
+  by rewrite -card_gt0 cards_draws bin_gt0 cardE.
+rewrite inE => /andP [AsubE cardA]; apply/existsP; exists A; rewrite cardA.
+by apply/forallP => x; apply/implyP => /(subsetP AsubE); apply: inS.
 Qed.
-
 
 Notation Signs n := ('I_3 ^ n)%type.
 Notation Expos n := ('I_3 ^ n)%type.
@@ -251,19 +292,18 @@ set P := (X in cover X); have /eqP <- : trivIset P.
 rewrite big_imset /=; last first.
   move=> i j _ _ /= /eqP.
   rewrite eq_extset.
+Admitted.  
 
-  
 
+(* transitivity #|cover [set extset i (adapt (Xi S i.+1)) | i : 'I_3]|. *)
+(*   apply: eq_card => /= E; apply/bigcupP/bigcupP => /= [[i _ memE]|[A]]. *)
+(*     by exists (extset i (adapt (Xi S i.+1))); first by apply: mem_imset. *)
+(*   by move=> /imsetP [i _ ->] memE; exists i. *)
+(* rewrite leq_card_cover. *)
 
-transitivity #|cover [set extset i (adapt (Xi S i.+1)) | i : 'I_3]|.
-  apply: eq_card => /= E; apply/bigcupP/bigcupP => /= [[i _ memE]|[A]].
-    by exists (extset i (adapt (Xi S i.+1))); first by apply: mem_imset.
-  by move=> /imsetP [i _ ->] memE; exists i.
-rewrite leq_card_cover.
-
-rewrite -card_partition.
-admit.
-Qed.
+(* rewrite -card_partition. *)
+(* admit. *)
+(* Qed. *)
 
 Lemma prop1084 n (S : {set Signs n}) a :
  a \in adapt S -> 2 ^ #|[set i : 'I_n | a(i) != 0%R]| <= #|S|.
