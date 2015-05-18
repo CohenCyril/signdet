@@ -1,6 +1,6 @@
 Require Import ssreflect ssrfun ssrbool eqtype ssrnat seq choice path fintype finset finfun.
 Require Import div bigop ssralg poly polydiv ssrnum perm zmodp ssrint rat tuple.
-Require Import interval matrix mxtens mxalgebra binomial.
+Require Import interval matrix (* mxtens  *) mxalgebra binomial.
 Require Import path.
 
 Set Implicit Arguments.
@@ -30,6 +30,10 @@ Proof. by move=> ltin; rewrite /bump leqNgt ltin add0n. Qed.
 Lemma lift_ord_max n (i : 'I_n) :
    lift ord_max i = widen_ord (leqnSn n) i.
 Proof. by apply: val_inj=> /=; rewrite bump_small. Qed.
+
+Lemma insubd_id (X : Type) (P : pred X) (S : subType P) (x y : S) :
+  insubd x (val y) = y.
+Proof. by apply: val_inj; rewrite insubdK //; apply: valP. Qed.
 
 Lemma cards_draws (T : finType) (B : {set T}) k :
   #|[set A : {set T} | A \subset B & #|A| == k]| = 'C(#|B|, k).
@@ -167,46 +171,6 @@ apply/subsetP/subsetP => SS' s.
 by case/imsetP=> s' s'S ->; rewrite mem_extset_r SS'.
 Qed.
 
-(* Definition tvec (n : nat) (taq : ('I_n -> 'I_3) -> int) (a : {set Expos n}) : *)
-(*    'rV[int]_(#|a|). *)
-(* Admitted. *)
-
-(* Definition cnonnull (n m : nat) (s : {set Signs n}) (c : 'rV[int]_(3 * m)) : *)
-(*    {set Expos n}. (* morally m = #|s| *) *)
-(* Admitted. *)
-
-Definition ctmat1 := (\matrix_(i < 3, j < 3)
-  (nth [::] [:: [:: 1%:Z ; 1 ; 1 ]
-              ; [:: -1   ; 1 ; 1 ]
-              ; [::  0   ; 0 ; 1 ] ] i)`_j)%R.
-
-
-Lemma mul2n n : (2 * n = n + n)%N. Proof. by rewrite mulSn mul1n. Qed.
-Lemma mul3n n : (3 * n = n + (n + n))%N. Proof. by rewrite !mulSn addn0. Qed.
-
-(* Definition lexi n (S : {set 'I_3 ^ n}) : 'I_(#|S|) -> 'I_3 ^ n := *)
-(*   enum_val. *)
-
-(* Lemma lexiP n (S : {set 'I_3 ^ n}) (i :'I_(#|S|)) : lexi i \in S. *)
-(* Proof. exact: enum_valP. Qed. *)
-
-
-(* Lemma unlexiK n (s : {set exp 'I_3 n}) : *)
-(*    {in [set lexi x | x in 'I_(#|s|)], cancel (unlexi s) (@lexi _ s)}. *)
-(* Admitted. *)
-
-(* Lemma unlexiK n (s : {set exp 'I_3 n}) j : *)
-(*   (lexi (unlexi s j) == j) = (j \in s). *)
-(* Proof. *)
-(* apply/eqP/idP => [<-|]. *)
-
-(* Definition subst  X (P : X -> Type) (x y : X) (e : x = y) : P x -> P y := *)
-(*   let: erefl := e in id. *)
-
-Lemma insubd_id (X : Type) (P : pred X) (S : subType P) (x y : S) :
-  insubd x (val y) = y.
-Proof. by apply: val_inj; rewrite insubdK //; apply: valP. Qed.
-
 Definition Xi n (X : finType) (S : {set X ^ n.+1}) (m : nat) :=
   [set s : X ^ n | [exists E : {set X}, (#|E| == m)
                    && [forall x in E, extelt x s \in S]]].
@@ -274,19 +238,19 @@ Lemma nthextP k n (S : {set 'I_k.+1 ^ n.+1}) (s : 'I_k.+1 ^ n) x :
   reflect (exists2 i, i < #|exts S s| & nthext S s i = x) (x \in exts S s).
 Proof. by rewrite -mem_seqext -size_seqext; apply: nthP. Qed.
 
-Lemma in_nthext k n (S : {set 'I_k.+1 ^ n.+1}) 
+Lemma in_nthext k n (S : {set 'I_k.+1 ^ n.+1})
            (s : 'I_k.+1 ^ n) (i : nat) : i < #|exts S s| ->
    nthext S s i \in exts S s.
 Proof. by move=> i_small; apply/nthextP; exists i. Qed.
 
-Lemma nthext_inj k n (S : {set 'I_k.+1 ^ n.+1}) (s : 'I_k.+1 ^ n) : 
+Lemma nthext_inj k n (S : {set 'I_k.+1 ^ n.+1}) (s : 'I_k.+1 ^ n) :
   {in [pred i | i < #|exts S s|] &, injective (nthext S s)}.
 Proof.
 move=> i j; rewrite !inE => i_small j_small /eqP.
 by rewrite nth_uniq ?size_sort -?cardE ?sort_uniq ?enum_uniq => // /eqP.
 Qed.
 
-Lemma nthext_in k n (S : {set 'I_k.+1 ^ n.+1}) 
+Lemma nthext_in k n (S : {set 'I_k.+1 ^ n.+1})
            (m : nat) (s : 'I_k.+1 ^ n) :
    s \in Xi S m -> forall i, i < m -> extelt (nthext S s i) s \in S.
 Proof.
@@ -314,65 +278,6 @@ Proof.
 rewrite card_in_imset //= => x y xXi yXi /eqP.
 by rewrite eq_extelt => /andP [_ /eqP].
 Qed.
- 
-
-(* Lemma smallests_subproof n (S : {set 'I_n}) i : #|S| >= i -> *)
-(*   exists (A : {set 'I_n}), *)
-(*   [&& A \subset S, (#|A| == i) *)
-(*   & [forall x in A, [forall y in (S :\: A), x <= y]]]. *)
-(* Proof. *)
-(* elim: i => [|i IHi]. *)
-(*   exists set0; rewrite cards0 eqxx sub0set /=. *)
-(*   by apply/forallP=> x; rewrite inE. *)
-(* move=> S_gt_i; case: IHi => [|B /and3P[subBS /eqP cardB /forallP /= BP]]. *)
-(*   by rewrite ltnW. *)
-(* have [[x]|] := altP (set0Pn (S :\: B)); last first. *)
-(*   rewrite negbK -cards_eq0 cardsD (setIidPr _) //. *)
-(*   by rewrite cardB subn_eq0 leqNgt S_gt_i. *)
-(* move=> x_SB; have ex_n : exists a : nat, (a < n) && (insubd x a \in S :\: B). *)
-(*   by exists x; rewrite insubd_id (valP x). *)
-(* have [m'] := ex_minnP ex_n; rewrite inE => /and3P [lt_mn] {ex_n}. *)
-(* set m := Ordinal lt_mn. *)
-(* have -> : insubd x m' = m by apply: val_inj; rewrite insubdK. *)
-(* move=> [mNB mS] m_min; exists (m |: B). *)
-(* rewrite subUset sub1set subBS (subsetP _ _ mS) // cardsU1 mNB cardB eqxx /=. *)
-(* apply/forallP => /= y; apply/implyP; rewrite !inE => /predU1P [->|]. *)
-(*   apply/'forall_implyP => k; rewrite !inE negb_or -andbA => /and3P[???]. *)
-(*   by apply: m_min; rewrite (valP k) /= insubd_id !inE; apply/andP. *)
-(* move=> yB; apply/'forall_implyP => k. *)
-(* rewrite !inE negb_or -andbA => /and3P[neq_km kNB kS]. *)
-(* by have := BP y; rewrite yB /= => /forallP /(_ k); rewrite !inE kNB kS. *)
-(* Qed. *)
-
-(* Definition smallests n (S : {set 'I_n}) i : {set 'I_n}:= *)
-(*   if (#|S| >= i) =P true is ReflectT S_big then *)
-(*   projT1 (sigW (smallests_subproof S_big)) *)
-(*   else S. *)
-
-(* Lemma smallestsP_subproof n (S : {set 'I_n}) i (A := smallests S i): *)
-(*   #|S| >= i -> *)
-(*   [&& A \subset S, (#|A| == i) *)
-(*   & [forall x in A, [forall y in (S :\: A), x <= y]]]. *)
-(* Proof. by rewrite /A /smallests; case: eqP => // p; case: sigW. Qed. *)
-
-(* Lemma smallests_sub n (S : {set 'I_n}) i : *)
-(*   smallests S  *)
-
-(* Definition exts n (X : finType) (S : {set X ^ n.+1}) (m : nat) (s : X ^ n) := *)
-(*   [set extelt i s | i in []] *)
-
-(* Definition select n (S : {set 'I_3 ^ n.+1}) (m : nat) := *)
-(*   [set s : X ^ n |  *)
-(*    [exists E : {set X}, (#|E| == m) && s ord_max \in E *)
-(*                    && s \in S]]]. *)
-(*                                 s ord0  *)
- 
-(*                    [exists E : {set 'I_3},  *)
-(*                     [&& #|E| == m, [forall x in 'I_3,  *)
-(*                                     [forall y in E, y <= x *)
-(*                    && [forall x in E, extelt x s \in S]]]. *)
-  
-  
 
 Lemma Xi_monotonic n (X : finType) (S S' : {set X ^ n.+1}) m :
   S \subset S' -> Xi S m \subset Xi S' m.
@@ -450,7 +355,7 @@ Definition expo (i : 'I_3) : nat :=
 Definition mat_coef n (i : Signs n) (j : Expos n) :=
   (\prod_k (sign (i k)) ^+ (expo (j k)))%:Q%R.
 
-Definition mat n (s : {set Signs n}) (a : {set Expos n}) : 
+Definition mat n (s : {set Signs n}) (a : {set Expos n}) :
   'M[rat]_(#|s|, #|a|) :=
     \matrix_(i,j) mat_coef (enum_val i) (enum_val j).
 
@@ -633,8 +538,8 @@ Qed.
 
 Lemma rowfree_matP n (S : {set Signs n}) (E : {set Expos n}) :
   S != set0 -> E != set0 ->
-  reflect (forall v : {ffun Signs n -> rat}, 
-          (forall e : Expos n, e \in E -> 
+  reflect (forall v : {ffun Signs n -> rat},
+          (forall e : Expos n, e \in E ->
           (\sum_(s in S) v s * mat_coef s e = 0)%R) ->
             forall s : Signs n, s \in S -> v s = 0%R)
           (row_free (mat S E)).
@@ -678,7 +583,7 @@ Qed.
 
 Definition ffun0 (T : finType) (X : Type) : #|T| = 0 -> {ffun T -> X}.
 Proof. by move=> /card0_eq T0; apply: finfun => t; move: (T0 t). Defined.
- 
+
 Lemma adapt_adapted n (S : {set Signs n}) : adapted S (adapt S).
 Proof.
 rewrite /adapted {1}card_adapt eqxx /=.
@@ -736,7 +641,7 @@ elim => [|M IHM] XiM_neq0 M_max.
   rewrite (bigD1 ord0) ?inE //= big1 ?setU0; last first.
     by move=> i; rewrite !inE -!val_eqE /= => /andP [/M_max]; case: (val i).
   have := IHn (Xi S 1) => /=.
- 
+
 
 suff: forall (L : 'rV__), L *m mat S (adapt S') = 0%R ->  L = 0%R.
   move=> Hmat; rewrite -kermx_eq0; apply/eqP.
@@ -760,7 +665,7 @@ rewrite (reindex_onto (enum_rank_in s0S) enum_val) //=; last first.
 rewrite (eq_bigl _ _ (enum_rank_in_id _)).
 rewrite (eq_bigr (fun i =>
   (L ord0 (enum_rank_in s0S i))%:M *m \row_j mat_coef i (enum_val j)%R)); last first.
-  by move=> i iS; rewrite enum_rankK_in. 
+  by move=> i iS; rewrite enum_rankK_in.
 rewrite (set_partition_big _ (partition_Signs S)) /=.
 rewrite -(cover_partition (partition_Signs S)) cover_imset  in S_neq0 L LP s0S *.
 
@@ -787,16 +692,16 @@ elim => [|M IHM] XiM_neq0 M_max.
   rewrite -(cover_partition (partition_Signs S)) cover_imset.
   rewrite (bigD1 ord0) ?inE //= big1 ?setU0; last first.
     by move=> i; rewrite !inE -!val_eqE /= => /andP [/M_max]; case: (val i).
-    
+
 
   rewrite /mat.
 
     apply/eqP; rewrite extset_eq0 -cards_eq0 card_adapt cards_eq0.
     apply/negP=> /negP /M_max; rewrite leqn0; apply/negP.
     by rewrite -val_eqE in i_neq0.
-  
 
-    
+
+
 (* rewrite -kermx_eq0; apply/eqP. *)
 (* have : mat S (adapt S)  col_mx (mat (Xi S 1) () *)
 suff: forall (L : 'rV__), L *m mat S (adapt S) = 0%R ->  L = 0%R.
@@ -821,7 +726,7 @@ rewrite (reindex_onto (enum_rank_in s0S) enum_val) //=; last first.
 rewrite (eq_bigl _ _ (enum_rank_in_id _)).
 rewrite (eq_bigr (fun i =>
   (L ord0 (enum_rank_in s0S i))%:M *m \row_j mat_coef i (enum_val j)%R)); last first.
-  by move=> i iS; rewrite enum_rankK_in. 
+  by move=> i iS; rewrite enum_rankK_in.
 Admitted.
 
 
