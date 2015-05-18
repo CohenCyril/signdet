@@ -103,6 +103,15 @@ Lemma extelt_ord_max  n (X : finType) (x : X) (s : X ^ n) :
   (extelt x s) ord_max = x.
 Proof. by rewrite /extelt ffunE unlift_none. Qed.
 
+Lemma extelt_small (X : finType) (x : X) n (i : 'I_n.+1)
+  (b : X ^ n) (lt_in : i < n) :
+  (extelt x b) i = b (Ordinal lt_in).
+Proof.
+rewrite ffunE; case: unliftP=> [j|] i_def; last first.
+  by suff: false by []; rewrite i_def ltnn in lt_in *.
+by congr (b _); apply: val_inj; rewrite /= i_def /= bump_small.
+Qed.
+
 Lemma eq_extelt n (X : finType) (x x' : X) (s s' : X ^ n) :
   (extelt x s == extelt x' s') = (x == x') && (s == s').
 Proof.
@@ -430,8 +439,8 @@ apply/setP=> i; rewrite !inE; apply/negP => /imsetP /= [x].
 by rewrite Xi0 ?inE.
 Qed.
 
-Notation Signs n := ('I_3 ^ n)%type.
-Notation Expos n := ('I_3 ^ n)%type.
+Definition Signs n := ('I_3 ^ n)%type.
+Definition Expos n := ('I_3 ^ n)%type.
 
 Definition sign (i : 'I_3) : int :=
   if i == ord0 then 0%R else if i == ord_max then -1%R else 1%R.
@@ -622,22 +631,113 @@ Proof.
 by apply/eqP/idP => [<-|xA]; rewrite ?enum_valP ?enum_rankK_in ?eqxx.
 Qed.
 
+Lemma rowfree_matP n (S : {set Signs n}) (E : {set Expos n}) :
+  S != set0 -> E != set0 ->
+  reflect (forall v : {ffun Signs n -> rat}, 
+          (forall e : Expos n, e \in E -> 
+          (\sum_(s in S) v s * mat_coef s e = 0)%R) ->
+            forall s : Signs n, s \in S -> v s = 0%R)
+          (row_free (mat S E)).
+Proof.
+move=> /set0Pn /sigW [s0 s0S] /set0Pn /sigW [e0 e0E].
+apply: (iffP idP) => [/row_freeP [M MP] v vP s sS|].
+  have := MP.
+  move=> /(congr1 (mulmx (\row_(i < #|S|) v (enum_val i)))).
+  rewrite mulmxA mulmx1 => /rowP /(_ (enum_rank_in sS s)).
+  rewrite !mxE enum_rankK_in // => <-.
+  rewrite (reindex_onto (enum_rank_in e0E) enum_val) //=; last first.
+    by move=> i; rewrite enum_valK_in.
+  rewrite (eq_bigl _ _ (enum_rank_in_id _)).
+  rewrite big1 => //= e _; rewrite !mxE.
+  rewrite (reindex_onto (enum_rank_in sS) enum_val) //=; last first.
+    by move=> i; rewrite enum_valK_in.
+  rewrite (eq_bigl _ _ (enum_rank_in_id _)).
+  pose e' := enum_val (enum_rank_in e0E e).
+  have e'E : e' \in E by apply: enum_valP.
+  set x := (X in (X * _)%R); suff -> : x = 0%R by rewrite mul0r.
+  rewrite -[RHS](vP e') //; apply: eq_bigr => s' s'S.
+  by rewrite !mxE -/e' enum_rankK_in.
+move=> matcoefP.
+suff: forall (L : 'rV__), L *m mat S E = 0%R -> L = 0%R.
+  move=> Hmat; rewrite -kermx_eq0; apply/eqP.
+  apply/row_matrixP => i; rewrite row0; apply/Hmat.
+  by apply/sub_kermxP; rewrite row_sub.
+move=> L.
+pose v := [ffun s : Signs n => L ord0 (enum_rank_in s0S s)].
+have -> : L = \row_i v (enum_val i).
+  by apply/rowP => i; rewrite !mxE ffunE enum_valK_in.
+move=> vM_eq0; apply/rowP => i; rewrite !mxE.
+apply: matcoefP => //; last exact: enum_valP.
+move=> e eE; have /rowP /(_ (enum_rank_in eE e)):= vM_eq0; rewrite !mxE.
+rewrite (reindex_onto (enum_rank_in s0S) enum_val) //=; last first.
+  by move=> j; rewrite enum_valK_in.
+rewrite (eq_bigl _ _ (enum_rank_in_id _)) => S_eq0; rewrite -[RHS]S_eq0.
+apply: eq_bigr => s sS; rewrite !mxE.
+by rewrite !enum_rankK_in.
+Qed.
+
+Definition ffun0 (T : finType) (X : Type) : #|T| = 0 -> {ffun T -> X}.
+Proof. by move=> /card0_eq T0; apply: finfun => t; move: (T0 t). Defined.
+ 
 Lemma adapt_adapted n (S : {set Signs n}) : adapted S (adapt S).
 Proof.
-rewrite /adapted; have [->|S_neq0] := eqVneq S set0.
+rewrite /adapted {1}card_adapt eqxx /=.
+have [->|SN0] := altP (S =P set0).
+  by move: (mat _ _); rewrite cards0 => M; rewrite flatmx0 -row_leq_rank.
+apply/rowfree_matP; rewrite ?adapt_eq0 // {SN0}.
+elim: n => [|n IHn] in S *.
+  move=> v vP s sS; have card30 : #|{: 'I_3 ^ 0}| = 1.
+    by rewrite card_ffun !card_ord expn0.
+  have /= := (vP s); rewrite sS => /(_ isT); have -> : S = [set s].
+    by apply/setP => x; rewrite !(fintype1 s) // !inE eqxx.
+  by rewrite big_set1 /mat_coef big_ord0 mulr1.
+move=> v vP s sS.
+pose v' i := [ffun x => v (extelt i x)].
+suff v's_eq0 i : i \in exts S (restrict s) -> v' i (restrict s) = 0%R.
+  admit.
+move=> i_in.
+apply: (IHn (Xi S i.+1)); last first.
+  admit.
+move=> e.
+rewrite (set_partition_big _ (partition_Signs S)) /=.
+rewri
+  rewrite -cards_eq0. -card_exts.
+
+
+  by move: (mat _ _); rewrite cards0 => M; rewrite flatmx0 -row_leq_rank.
+apply/rowfree_matP; rewrite ?adapt_eq0 // => v vP s.
+rewrite (set_partition_big _ (partition_adapt S)) /=.
+rewrite (set_partition_big _ (partition_Signs S)) /=.
+
+
+
+
+have [->|S_neq0] := eqVneq S set0.
   by move: (mat _ _); rewrite card_adapt !cards0.
-set S' := (S in X in adapt X).
-elim: n => [|n IHn] in S S' S_neq0 *.
-  rewrite /S' /adapted eqxx /= row_free_unit.
-  have : #|S| <= 1.
-    rewrite (@leq_trans #|[set: Signs 0]|) // ?subset_leqif_card ?subsetT //.
-    by rewrite cardsT card_ffun !card_ord.
-  rewrite leq_eqVlt ltnS leqn0 orbC cards_eq0; move/predU1P => [->|/eqP S1].
-    by move: (mat _ _); rewrite cards0 => M; rewrite unitmxE det_mx00.
-  suff ->: mat S S = 1%:M%R by rewrite unitmx1.
-  apply/matrixP => i j; rewrite /mat !mxE /mat_coef big_ord0.
-  by rewrite S1 in i j *; rewrite !ord1 eqxx.
-rewrite /adapted {1}card_adapt eqxx // andTb /=.
+have [] := @ex_maxnP (fun m => Xi S m.+1 != set0) 2.
+- exists 0.
+  have /set0Pn [s sS] := S_neq0.
+  apply/set0Pn; exists (restrict s).
+  rewrite inE; apply/existsP; exists [set s ord_max].
+  rewrite cards1 eqxx /=; apply/'forall_implyP => i.
+  by rewrite inE => /eqP ->; rewrite restrictK.
+- move=> i; apply: contraNT.
+  rewrite -ltnNge => i_big; apply/eqP/setP=> s; rewrite !inE.
+  apply: negbTE; rewrite negb_exists; apply/forallP => E.
+  rewrite negb_and ltn_eqF //= ltnS (leq_trans _ i_big) //.
+  by rewrite (leq_trans (max_card _)) ?card_ord.
+elim => [|M IHM] XiM_neq0 M_max.
+  rewrite /= (bigD1 ord0) //= big1 ?setU0; last first.
+    move=> i i_neq0.
+    apply/eqP; rewrite extset_eq0 -cards_eq0 card_adapt cards_eq0.
+    apply/negP=> /negP /M_max; rewrite leqn0; apply/negP.
+    by rewrite -val_eqE in i_neq0.
+  rewrite -(cover_partition (partition_Signs S)) cover_imset.
+  rewrite (bigD1 ord0) ?inE //= big1 ?setU0; last first.
+    by move=> i; rewrite !inE -!val_eqE /= => /andP [/M_max]; case: (val i).
+  have := IHn (Xi S 1) => /=.
+ 
+
 suff: forall (L : 'rV__), L *m mat S (adapt S') = 0%R ->  L = 0%R.
   move=> Hmat; rewrite -kermx_eq0; apply/eqP.
   apply/row_matrixP => i; rewrite row0; apply/Hmat.
@@ -661,6 +761,10 @@ rewrite (eq_bigl _ _ (enum_rank_in_id _)).
 rewrite (eq_bigr (fun i =>
   (L ord0 (enum_rank_in s0S i))%:M *m \row_j mat_coef i (enum_val j)%R)); last first.
   by move=> i iS; rewrite enum_rankK_in. 
+rewrite (set_partition_big _ (partition_Signs S)) /=.
+rewrite -(cover_partition (partition_Signs S)) cover_imset  in S_neq0 L LP s0S *.
+
+
 
 have [] := @ex_maxnP (fun m => Xi S m.+1 != set0) 2.
 - exists 0.
@@ -693,10 +797,6 @@ elim => [|M IHM] XiM_neq0 M_max.
   
 
     
-
-  
-
-
 (* rewrite -kermx_eq0; apply/eqP. *)
 (* have : mat S (adapt S)  col_mx (mat (Xi S 1) () *)
 suff: forall (L : 'rV__), L *m mat S (adapt S) = 0%R ->  L = 0%R.
@@ -724,96 +824,8 @@ rewrite (eq_bigr (fun i =>
   by move=> i iS; rewrite enum_rankK_in. 
 Admitted.
 
-Lemma extelt_small (X : finType) (x : X) n (i : 'I_n.+1)
-  (b : X ^ n) (lt_in : i < n) :
-  (extelt x b) i = b (Ordinal lt_in).
-Proof.
-rewrite ffunE; case: unliftP=> [j|] i_def; last first.
-  by suff: false by []; rewrite i_def ltnn in lt_in *.
-by congr (b _); apply: val_inj; rewrite /= i_def /= bump_small.
-Qed.
 
 Definition nonEmptySigns n (taq : ('I_n -> 'I_3) -> int) : {set Signs n}.
 Admitted.
-
-(* Definition signdet (n : nat) (taq : ('I_n -> 'I_3) -> int)  : *)
-(*   {sa : {set Signs n} * {set Expos n} *)
-(*         & 'M[int]_(#|sa.1|, #|sa.2|)}. *)
-(* Proof. *)
-(* elim: n taq. *)
-(*   move=> taq; exists (set0, set0); exact 0. *)
-(* move=> n' IHn taq. *)
-(* set taq' := fun f => taq (fun (i : 'I_n'.+1) => *)
-(*                  if (i < n')%N =P true is ReflectT P *)
-(*                    then f (Ordinal P) else ord0). *)
-(* have [[s a] /= M] := IHn taq'. *)
-(* (* set s' := cnonnull s (row_mx (tvec taq (extset ord0 a)) *) *)
-(* (*                  (row_mx (tvec taq (extset (1%R : 'F_3) a)) (tvec taq (extset (2%:R : 'F_3) a))) *m  *) *)
-(* (*                castmx (mul3n _, erefl) (invmx (M *t ctmat1))). *) *)
-
-(* (*  := *) *)
-(* (*   match n with *) *)
-(* (*     | 0     => (existT (fun sa : {set Signs n} * {set Expos n} *) *)
-(* (*                          => 'M[int]_(#|sa.1|, #|sa.2|)) (set0, set0) 0%R) *) *)
-(* (*     | n'.+1 =>  *) *)
-(* (*       let taq' (f : 'I_n' -> 'I_3) :=  *) *)
-(* (*           taq (fun (i : 'I_n) =>  *) *)
-(* (*                  if (i < n')%N =P true is ReflectT P *) *)
-(* (*                    then f (Ordinal P) else ord0) in *) *)
-(* (*       let: existT (s, a) M := signdet taq' in *) *)
-(* (*       let c := cnonnull s (row_mx (tvec taq (extset ord0 a)) *) *)
-(* (*                  (row_mx (tvec taq (extset 1%R a)) (tvec taq (extset 2%R a))) *m  *) *)
-(* (*                castmx (mul3n _, erefl) (invmx (M *t ctmat1))) in *) *)
-
-
-
-(* (*       (* let s' :=  (extset 0%R s) :|: (extset 1%R s) :|: (extset 2%R s) in *) *) *)
-(* (*       (* let a' :=  (extset 0%R a) :|: (extset 1%R a) :|: (extset 2%R a) in *) *) *)
-
-
-(* (*  (existT (fun sa : {set Signs n} * {set Expos n} *) *)
-(* (*                          => 'M[int]_(#|sa.1|, #|sa.2|)) (set0, set0) 0%R) *) *)
-(* (*   end. *) *)
-
-(* Admitted. *)
-
-(* Definition signdetS (n : nat) (taq : ('I_n -> 'I_3) -> int) := *)
-(*   let: existT sa _ := signdet taq in sa.1. *)
-
-(* Definition signdetAda (n : nat) (taq : ('I_n -> 'I_3) -> int) := *)
-(*   let: existT sa _ := signdet taq in sa.2. *)
-
-(* Definition signdetM_subdef (n : nat) (taq : ('I_n -> 'I_3) -> int) : *)
-(*   'M[int]_(#|signdetS taq|,#|signdetAda taq|). *)
-(* Admitted. *)
-
-(* Lemma signdet_sizeP (n : nat) (taq : ('I_n -> 'I_3) -> int) : *)
-(*   #|signdetS taq| = #|signdetAda taq|. *)
-(* Proof. *)
-(* Admitted. *)
-
-(* Definition signdetM  (n : nat) (taq : ('I_n -> 'I_3) -> int) : *)
-(*   'M[int]_(#|signdetS taq|,#|signdetS taq|) := *)
-(*   castmx (erefl, esym (signdet_sizeP taq)) (signdetM_subdef taq). *)
-
-(* Lemma unit_signdet  (n : nat) (taq : ('I_n -> 'I_3) -> int) : *)
-(*   signdetM taq \in unitmx. *)
-(* Proof. *)
-(* Admitted. *)
-
-
-  (* {m : nat & m.-tuple 'I_3 * m.-tuple 'I_3 * 'M[int]_m)%type} := *)
-  (* match n with *)
-  (*   | 0     => (existT _ 0 ([tuple], [tuple], 0%R)) *)
-  (*   | n'.+1 =>  *)
-  (*     let taq' (f : 'I_n' -> 'I_3) :=  *)
-  (*           taq (fun (i : 'I_n) =>  *)
-  (*                  if (i < n') =P true is ReflectT P *)
-  (*                  then f (Ordinal P) else ord0) in *)
-  (*     let: existT m (sc, ada, M) := signdet taq' in *)
-
-  (*              (existT _ 0 ([tuple], [tuple], 0%R)) *)
-  (* end. *)
-
 
 End SignDet.
