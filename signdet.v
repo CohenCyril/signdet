@@ -323,6 +323,10 @@ move=> S; apply/setP => /= s; apply/idP/idP => [|sS]; last first.
 by rewrite inE => /card_gt0P [y]; rewrite inE mem_extset ?extE1 => /andP [].
 Qed.
 
+Fact ord_max_in_exts n (X : finType) (S : {set X ^ n.+1})
+      (s : X ^ n.+1) : s \in S -> s ord_max \in exts S (restrict s).
+Proof. by rewrite !extE1. Qed.
+
 Lemma extset_eq0 n (X : finType) (x : X) (S : {set X ^ n}) :
   (extset x S == set0) = (S == set0).
 Proof. by rewrite -(extset0 _ x) (can_eq (extsetK _)). Qed.
@@ -723,8 +727,33 @@ Qed.
 (* Lemma mat1P (S : {set Signs 1}) : mat S (adapt S) *m mat1 S = 1%:M. *)
 (* Proof. by rewrite /mat1; case: sig_eqW. Qed. *)
 
-Lemma row_free_1ext (S : {set 'I_3}) : 'M[rat]_#|S| :
-  row_free (\matrix_(i, j) sign (enum_val i) ^+ expo (inord j)).
+Definition adapt1 (S : {set 'I_3}) : 'M[rat]_#|S| :=
+  \matrix_(i, j) (sign (enum_val i))%:~R ^+ expo (inord j).
+
+Lemma row_free_adapt1 (S : {set 'I_3}) : row_free (adapt1 S).
+Proof.
+Admitted.
+
+Lemma reindex_enum_cond (R : Type) (idx : R) (op : Monoid.com_law idx) 
+  (X : finType) (S : {set X}) s0 (s0S : s0 \in S)
+  (P : pred 'I_#|S|) (F : 'I_#|S| -> R) (h := enum_rank_in s0S) :
+  \big[op/idx]_(i < #|S| | P i) F i = \big[op/idx]_(s in S | P (h s)) F (h s).
+Proof.
+rewrite /h {h} (reindex (enum_val : 'I_#|S| -> _)).
+apply: eq_big => [i|i Pi]; rewrite enum_valK_in ?enum_valP //.
+exists (enum_rank_in s0S) => [i|s]; rewrite -topredE /=.
+  by rewrite enum_valK_in.
+by move=> /andP [sS _]; rewrite enum_rankK_in.
+Qed.
+
+Lemma reindex_enum (R : Type) (idx : R) (op : Monoid.com_law idx) 
+  (X : finType) (S : {set X}) s0 (s0S : s0 \in S)
+  (F : 'I_#|S| -> R) (h := enum_rank_in s0S) :
+  \big[op/idx]_(i < #|S|) F i = \big[op/idx]_(s in S) F (h s).
+Proof.
+rewrite (reindex_enum_cond _ s0S).
+by apply: eq_big=> //= s; rewrite andbT.
+Qed.
 
 Lemma adapt_adapted n (S : {set Signs n}) : adapted S (adapt S).
 Proof.
@@ -754,30 +783,54 @@ have /set0Pn [a' a'_in] := aXi1_neq0.
 (* have /set0Pn [a a_in]: adapt S != set0. *)
 (*   rewrite adapt_eq0. *)
 (*   admit. *)
-exists (\matrix_(j,k) M (enum_rank_in a'_in (restrict (enum_val j)))
-                        (enum_rank_in s'_in (restrict (enum_val k)))
- *                         
-                        ).
+exists (\matrix_(j,k) (
+M (enum_rank_in a'_in (restrict (enum_val j)))
+     (enum_rank_in s'_in (restrict (enum_val k)))
+*
+invmx (@adapt1 (exts S (restrict (enum_val k))))
+     (enum_rank_in (ord_max_in_exts (enum_valP k)) (enum_val j ord_max))
+     (enum_rank_in (ord_max_in_exts (enum_valP k)) (enum_val k ord_max)))%R).
 apply/matrixP => /= i k; rewrite !mxE.
 (* pose F j := ((mat S (adapt S)) i (insubd i_a j) * N (insubd i_a j) k)%R. *)
+rewrite (reindex_enum _ a_in) /=.
 set F := BIG_F.
 pose P a' := a' \in adapt (Xi 1 S).
 pose Q a' x := x \in exts (adapt S) a'.
 transitivity (\sum_(p : Expos n * 'I_3 | P p.1 && Q p.1 p.2)
-               F (enum_rank_in a_in (extelt p.2 p.1)))%R.
-  symmetry.
-  rewrite (reindex (fun j : 'I_#|adapt S| => let a := enum_val j in
-                   (restrict a, a ord_max))) => /=.
-    apply: eq_big => /= j; rewrite /P /Q !extE enum_valP ?enum_valK_in //.
-    have := (enum_valP j); rewrite ?andbT in_adapt.
-    exact/subsetP/subset_adapt/leq_Xi.
-  exists (fun a : Expos n * 'I_3 => enum_rank_in a_in (extelt a.2 a.1)).
-    by move=> j /=; rewrite !extE ?enum_valK_in.
-  move=> [b' x]; rewrite /P /Q ?extE => /andP [/= Pb Qb].
-  by rewrite enum_rankK_in ?extE //=.
+               F (extelt p.2 p.1))%R.
+  rewrite (reindex (fun a : Expos n * 'I_3 => (extelt a.2 a.1))) /=.
+    apply: eq_bigl => [] [b' x] /=; rewrite /P /Q !extE andb_idl //.
+    by rewrite in_adapt ?extE; apply/subsetP/subset_adapt/leq_Xi.
+  exists (fun a => (restrict a, a ord_max)) => [[b' x]|b] /=; 
+  by rewrite in_adapt ?extE.
 set G := BIG_F; rewrite /= in G *; pose G' a b := G (a, b).
 rewrite (eq_bigr (fun p => G' p.1 p.2)); do ?by case.
 rewrite -pair_big_dep /=.
+have := congr1 (fun X : 'M__ =>
+  X (enum_rank_in s'_in (restrict (enum_val i)))
+    (enum_rank_in s'_in (restrict (enum_val k)))) MP.
+rewrite !mxE.
+rewrite (reindex_enum _ a'_in) /=.
+rewrite (can_in_eq (enum_rankK_in _)) ?restrict_inW ?enum_valP //.
+rewrite (can_eq (@restrictK _ _)) // (inj_eq (@enum_val_inj _ _)) => <-.
+apply: eq_big => b' //; rewrite /P => Pb'.
+rewrite !mxE ?enum_rankK_in ?restrict_inW ?enum_valP //.
+rewrite /G' /G /F /=.
+evar (H : 'I_3 -> rat).
+rewrite (eq_bigr H)=> [|j]; last first.
+  rewrite /Q ?extE => Qb'j.
+  rewrite !mxE ?enum_rankK_in ?extE //.
+  rewrite /mat_coef /= big_ord_recr /=.
+
+  
+
+rewrite (eq_bigr (fun b' => mat_coef (restrict (enum_val i)) b' *
+ M (enum_rank_in a'_in b'))
+   (enum_rank_in s'_in ))))); last first.
+  move=> b'; rewrite /P => P
+  
+have := congr1 (fun X : 'M_(_,_) => X i k) MP.
+rewrite 
 
   rewrite inE in Qb.
   move: Pb'
