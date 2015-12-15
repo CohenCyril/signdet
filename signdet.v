@@ -11,7 +11,6 @@ Import GRing.Theory Num.Theory Num.Def Pdiv.Ring Pdiv.ComRing.
 
 Local Open Scope ring_scope.
 Local Open Scope nat_scope.
-(* Local Open Scope ring_scope. *)
 
 Section extrassr.
 
@@ -732,6 +731,12 @@ have -> : mat1 ctmat S = M _.
   apply/matrixP => i j; rewrite !mxE inordK -?enum_val_nth //.
   by rewrite (leq_trans (ltn_ord _)).
 move: cardS.
+have enumI3E : enum 'I_3 = [seq inord i | i <- iota 0 3].
+  apply: (@eq_from_nth _ ord0).
+    by rewrite -cardE card_ord size_map size_iota.
+  move=> i; rewrite -cardE card_ord => i_small.
+  rewrite -{1}[i](@inordK 2) // nth_ord_enum (nth_map 0) //=.
+  by case: i i_small => [|[|[|?]]].
 do 3?[rewrite leq_eqVlt orbC => /orP []; rewrite ?ltnS ?leqn0].
 - rewrite cards_eq0 => /eqP ->; rewrite row_free_unit unitmxE.
   by move: (M _); rewrite cards0 => M'; rewrite det_mx00.
@@ -747,17 +752,25 @@ do 3?[rewrite leq_eqVlt orbC => /orP []; rewrite ?ltnS ?leqn0].
   suff: M [set~ x] = castmx (esym S2, esym S2) (ctmat2 x).
     case: _ / (esym S2) (M _) => A ->; rewrite castmx_id.
     by rewrite det_ctmat2 {S_def S2}; case: x => [[|[|?]] ?].
-  apply/matrixP=> i j; rewrite !mxE !castmxE /=.
+  apply/matrixP=> i j; rewrite !(mxE, castmxE) ?esymK /=.
+  congr ((sign _)%:Q ^+ _); apply/val_inj => /=.
   rewrite /enum_val.
-  admit.
+  rewrite -filter_index_enum /index_enum -enumT /=.
+  rewrite enumI3E.
+  have : i < 2 by rewrite (leq_trans (ltn_ord i)) ?S2.
+  case: x i {j S2 S_def} => [[|[|[|?]]] ?] [[|[|[|?]]] ?] //=;
+  by rewrite !topredE ?inE -!val_eqE /= !inordK //=.
 - move=> /eqP S3; have /= S_def : S = setT.
     by apply/eqP; rewrite eqEcard ?subsetT ?cardsT ?card_ord S3.
   rewrite row_free_unit unitmxE unitfE; rewrite S_def in S3 *.
   suff: M setT = castmx (esym S3, esym S3) ctmat3.
     by case: _ / (esym S3) (M _) => A ->; rewrite castmx_id det_ctmat3.
-  apply/matrixP => i j; rewrite !mxE !castmxE.
-  admit.
-Admitted.
+  apply/matrixP => i j; rewrite !(mxE, castmxE) ?esymK /=.
+  congr ((sign _)%:Q ^+ _); apply/val_inj => /=.
+  rewrite /enum_val enum_setT -enumT /= enumI3E /=.
+  have : i < 3 by rewrite (leq_trans (ltn_ord i)) ?cardsT ?card_ord.
+  by case: (val i) => [|[|[|?]]]; rewrite ?inordK //=.
+Qed.
 
 Theorem ctmat_adapted n (S : {set 'I_3 ^ n}) : adapted ctmat S (adapt S).
 Proof. exact/adapt_adapted/row_free_ctmat1. Qed.
