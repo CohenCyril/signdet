@@ -83,9 +83,7 @@ by rewrite -row_mul mulmx_ker row0.
 Qed.
 
 Lemma det_mx11 (R : comRingType) (M : 'M[R]_1) : \det M = M 0%R 0%R.
-Proof.
-by rewrite {1}[M]mx11_scalar det_scalar.
-Qed.
+Proof. by rewrite {1}[M]mx11_scalar det_scalar. Qed.
 
 End extrassr.
 
@@ -130,7 +128,7 @@ Qed.
 Lemma extelt0 x r : extelt x r 0%R = x.
 Proof. by rewrite /extelt ffunE unlift_none. Qed.
 
-Definition extE1 := (inE, extelt0, exteltK, restrictK, eqxx).
+Let extE := (inE, extelt0, exteltK, restrictK, eqxx).
 
 Lemma eq_extelt x x' (r r' : X ^ n) :
   (extelt x r == extelt x' r') = (x == x') && (r == r').
@@ -156,16 +154,16 @@ Qed.
 
 Lemma mem_extset x s R : s \in extset x R = (s 0%R == x) && (restrict s \in R).
 Proof.
-apply/imsetP/idP => [[r rS ->]|/andP [/eqP<-] rsS]; first by rewrite !extE1.
-by exists (restrict s) => //; rewrite !extE1.
+apply/imsetP/idP => [[r rS ->]|/andP [/eqP<-] rsS]; first by rewrite !extE.
+by exists (restrict s) => //; rewrite !extE.
 Qed.
 
 Lemma mem_extset_r x r R : extelt x r \in extset x R = (r \in R).
-Proof. by rewrite mem_extset ?extE1. Qed.
+Proof. by rewrite mem_extset ?extE. Qed.
 
 Lemma restrict_inW S s : s \in S -> restrict s \in Xi 1 S.
 Proof.
-by move=> sS; rewrite inE; apply/card_gt0P; exists (s 0%R); rewrite !extE1.
+by move=> sS; rewrite inE; apply/card_gt0P; exists (s 0%R); rewrite !extE.
 Qed.
 
 Lemma extset0 x : extset x set0 = set0 :> {set X ^ n.+1}.
@@ -175,12 +173,12 @@ Lemma extsetK x : cancel (extset x) (Xi 1).
 Proof.
 move=> S; apply/setP => /= s; apply/idP/idP => [|sS]; last first.
   by rewrite -[s](exteltK x) restrict_inW // mem_extset_r.
-by rewrite inE => /card_gt0P [y]; rewrite inE mem_extset ?extE1 => /andP [].
+by rewrite inE => /card_gt0P [y]; rewrite inE mem_extset ?extE => /andP [].
 Qed.
 
 Fact ord0_in_exts (S : {set X ^ n.+1})
   (s : X ^ n.+1) : s \in S -> s 0%R \in exts S (restrict s).
-Proof. by rewrite !extE1. Qed.
+Proof. by rewrite !extE. Qed.
 
 Lemma extset_eq0 x (S : {set X ^ n}) : (extset x S == set0) = (S == set0).
 Proof. by rewrite -(extset0 x) (can_eq (extsetK _)). Qed.
@@ -192,7 +190,7 @@ have [->|[r rR]] /= := set_0Vmem R'; [by rewrite extset0 eqxx /= extset_eq0|].
 have /set0Pn -> /= : exists r, r \in R' by exists r.
 have [<-|/=] := altP (x =P y); first by rewrite (can_eq (extsetK _)).
 apply: contraNF => /eqP eq_xS_yR; have := mem_extset_r y r R'.
-by rewrite -eq_xS_yR rR eq_sym mem_extset ?extE1 => /andP [].
+by rewrite -eq_xS_yR rR eq_sym mem_extset ?extE => /andP [].
 Qed.
 
 Lemma subset_extset x R R' : (extset x R \subset extset x R') = (R \subset R').
@@ -241,14 +239,15 @@ Qed.
 
 End ExtX.
 
-Definition extXE := (extE1,mem_extset,extsetK,extset0).
-
 Section ExtIk.
 
 Variable (k n : nat).
 Let X := 'I_k.
 Implicit Types (S : {set X ^ n.+1}) (R : {set X ^ n}).
 Implicit Types (s : X ^ n.+1) (r : X ^ n) (x y : X) (m : nat) (i j : 'I_k).
+
+Definition extXE := (inE, extelt0, exteltK, restrictK, eqxx,
+             mem_extset, extsetK, extset0).
 
 Program Definition tupleext S r :=
   @Tuple k _ (sort (fun i j => val i <= val j) (enum (exts S r))
@@ -379,7 +378,7 @@ apply/setP => s; rewrite !inE; have [sS|sNS] /= := boolP (s \in S); last first.
   by apply:contraNF sNS; apply/subsetP/subset_reext.
 apply/imsetP/eqP => /= [[s' s'Xi ->]|<-].
   by rewrite extelt0 exteltK nthextK.
-by exists (restrict s); rewrite ?in_Xi_small ?indexextK ?extE1.
+by exists (restrict s); rewrite ?in_Xi_small ?indexextK ?extXE.
 Qed.
 
 Lemma reextT S : S = \bigcup_i reext S i.
@@ -638,13 +637,11 @@ Qed.
 Lemma det_ctmat3 : \det ctmat3 = 2%:Q.
 Proof.
 rewrite (expand_det_col _ ord_max).
-transitivity (\sum_i ctmat3 i ord_max * ((-1) ^+ i * \det (ctmat2 i)))%R.
-  apply: eq_bigr => i _; congr (_ * (_ * _))%R.
-    by rewrite -signr_odd odd_add addbF signr_odd.
-  congr (\det _); apply/matrixP => /= k l; rewrite !mxE //=.
-  by case: l => [[|[|?]] ?].
-rewrite !big_ord_recl big_ord0 !mxE.
-by rewrite ?(mul0r, mul1r, mulN1r, addr0, add0r) !det_ctmat2 /= opprK.
+transitivity (\sum_i ctmat3 i ord_max * ((-1) ^+ i * \det (ctmat2 i)))%R;
+  last by rewrite !big_ord_recl big_ord0 !mxE !det_ctmat2.
+apply: eq_bigr => i _; congr (_ * (_ *  _))%R; last congr (\det _).
+  by rewrite -signr_odd odd_add addbF signr_odd.
+by apply/matrixP => /= k l; rewrite !mxE //=; case: l => [[|[|?]] ?].
 Qed.
 
 Lemma row_free_ctmat1 (S : {set 'I_3}) : row_free (mat1 ctmat3 S).
