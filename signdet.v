@@ -617,9 +617,9 @@ Section Signdet.
 
 Implicit Types (k : 'I_3).
 
-Definition sign k : int := if k >= 2 then -1%R else k%:Z.
-Definition ctmat3   := \matrix_(i < 3, j < 3) (sign i)%:Q ^+ j.
-Definition ctmat2 k := \matrix_(i < 2, j < 2) (sign (lift k i))%:Q ^+ j.
+Definition sign k : rat := if k >= 2 then -1%R else k%:Q.
+Definition ctmat3   := \matrix_(i < 3, j < 3) sign i ^+ j.
+Definition ctmat2 k := \matrix_(i < 2, j < 2) sign (lift k i) ^+ j.
 
 Lemma det_ctmat2 k : \det (ctmat2 k) =
   if k <= 0 then - 2%:Q else if k > 1 then 1%R else - 1%R.
@@ -642,7 +642,7 @@ Qed.
 
 Lemma row_free_ctmat1 (S : {set 'I_3}) : row_free (mat1 ctmat3 S).
 Proof.
-pose M S := \matrix_(i < #|S|, j < #|S|) (sign (enum_val i))%:Q ^+ j.
+pose M S := \matrix_(i < #|S|, j < #|S|) sign (enum_val i) ^+ j.
 have := subset_leq_card (subsetT S); rewrite cardsT card_ord => cardS.
 have -> : mat1 ctmat3 S = M _.
   apply/matrixP => i j; rewrite !mxE inordK -?enum_val_nth //.
@@ -669,7 +669,7 @@ do 3?[rewrite leq_eqVlt orbC => /orP []; rewrite ?ltnS ?leqn0].
     case: _ / (esym S2) (M _) => A ->; rewrite castmx_id.
     by rewrite det_ctmat2 {S_def S2}; case: x => [[|[|?]] ?].
   apply/matrixP=> i j; rewrite !(mxE, castmxE) ?esymK /=.
-  congr ((sign _)%:Q ^+ _); apply/val_inj => /=.
+  congr (sign _ ^+ _); apply/val_inj => /=.
   rewrite /enum_val -filter_index_enum /index_enum -enumT /= enumI3E.
   have : i < 2 by rewrite (leq_trans (ltn_ord i)) ?S2.
   case: x i {j S2 S_def} => [[|[|[|?]]] ?] [[|[|[|?]]] ?] //=;
@@ -680,7 +680,7 @@ do 3?[rewrite leq_eqVlt orbC => /orP []; rewrite ?ltnS ?leqn0].
   suff: M setT = castmx (esym S3, esym S3) ctmat3.
     by case: _ / (esym S3) (M _) => A ->; rewrite castmx_id det_ctmat3.
   apply/matrixP => i j; rewrite !(mxE, castmxE) ?esymK /=.
-  congr ((sign _)%:Q ^+ _); apply/val_inj => /=.
+  congr (sign _ ^+ _); apply/val_inj => /=.
   rewrite /enum_val enum_setT -enumT /= enumI3E /=.
   have : i < 3 by rewrite (leq_trans (ltn_ord i)) ?cardsT ?card_ord.
   by case: (val i) => [|[|[|?]]]; rewrite ?inordK //=.
