@@ -470,7 +470,7 @@ have: restrict b \in adapt (Xi (a 0).+1 S).
 by apply: subsetP; rewrite subset_adapt ?leq_Xi ?ltnS ?leq_ba.
 Qed.
 
-Lemma prop1084 n (S : {set X^n}) (a : X^n) : a \in adapt S ->
+Proposition prop1084 n (S : {set X^n}) (a : X^n) : a \in adapt S ->
   (#|[set i | a i != 0%R]| <= trunc_log 2 #|S|)%N.
 Proof.
 move=> a_adapt; apply: trunc_log_max => //.
@@ -497,7 +497,7 @@ apply/ffunP => i; rewrite ffunE in_set.
 by case: ifPn => [/bP /eqP <- //|]; rewrite negbK => /eqP.
 Qed.
 
-Lemma adapt_adapted n (S : {set X^n}) : adapted S (adapt S).
+Theorem adapt_adapted n (S : {set X^n}) : adapted S (adapt S).
 Proof.
 rewrite /adapted {1}card_adapt eqxx /=.
 elim: n => [|n IHn] in S *.
