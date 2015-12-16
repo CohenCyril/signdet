@@ -627,12 +627,11 @@ do 3?[rewrite leq_eqVlt orbC => /orP []; rewrite ?ltnS ?leqn0].
   suff: M [set~ x] = castmx (esym S2, esym S2) (ctmat2 x).
     case: _ / (esym S2) (M _) => A ->; rewrite castmx_id.
     by rewrite det_ctmat2 {S_def S2}; case: x => [[|[|?]] ?].
-  apply/matrixP=> i j; rewrite !(mxE, castmxE) ?esymK /=.
-  congr (sign _ ^+ _); apply/val_inj => /=.
-  rewrite /enum_val -filter_index_enum /index_enum -enumT /= enumI3E.
-  have : (i < 2)%N by rewrite (leq_trans (ltn_ord i)) ?S2.
-  case: x i {j S2 S_def} => [[|[|[|?]]] ?] [[|[|[|?]]] ?] //=;
-  by rewrite !topredE ?inE -!val_eqE /= !inordK //=.
+  apply/matrixP=> i j; rewrite !(mxE, castmxE) ?esymK /=; congr (sign _ ^+ _).
+  apply/val_inj; rewrite /enum_val /=; move: i (enum_default _); rewrite S2.
+  rewrite /enum_val -filter_index_enum /index_enum -enumT enumI3E /=.
+  rewrite /= !topredE !inE -!val_eqE /= !inordK //=.
+  by case: x {j S2 S_def} => [[|[|[|?]]] ?] [[|[|?]] ?] /=; rewrite ?inordK.
 - move=> /eqP S3; have /= S_def : S = setT.
     by apply/eqP; rewrite eqEcard ?subsetT ?cardsT ?card_ord S3.
   rewrite row_free_unit unitmxE unitfE; rewrite S_def in S3 *.
