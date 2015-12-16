@@ -78,7 +78,7 @@ Definition restrict s : X ^ n := [ffun i => s (lift 0%R i)].
 Definition extset x R : {set X ^ n.+1} := [set extelt x s | s in R].
 
 (* the set of possible extensions of s in S *)
-Definition exts S (s : X ^ n) : {set X} := [set x | extelt x s \in S].
+Definition exts S r : {set X} := [set x | extelt x r \in S].
 
 (* the set of elements with at least m extensions in S,
   Xi 1 is the inverse of restrict *)
@@ -372,9 +372,6 @@ Variable F : fieldType.
 Variable k' : nat.
 Let k := k'.+1.
 Variable M : 'M[F]_k.
-
-Let sT := 'I_k.
-Let aT := 'I_k.
 Let X := 'I_k.
 
 Definition mat1 (S : {set X}) : 'M[F]_#|S| :=
@@ -382,32 +379,32 @@ Definition mat1 (S : {set X}) : 'M[F]_#|S| :=
 
 Hypothesis row_free_mat1 : forall (S : {set X}), row_free (mat1 S).
 
-Definition mat_coef n (i : sT^n) (j : aT^n) := \prod_k M (i k) (j k).
+Definition mat_coef n (i : X^n) (j : X^n) := \prod_k M (i k) (j k).
 
-Lemma mat_coefS n (s : sT^n.+1) (a : aT^n.+1) :
+Lemma mat_coefS n (s : X^n.+1) (a : X^n.+1) :
   mat_coef s a = M (s 0) (a 0) * mat_coef (restrict s) (restrict a).
 Proof.
 rewrite [LHS]big_ord_recl; congr (_ * _).
 by apply: eq_bigr => i _; rewrite !ffunE.
 Qed.
 
-Definition mat n (S : {set sT^n}) (A : {set aT^n}) :=
+Definition mat n (S : {set X^n}) (A : {set X^n}) : 'M_(#|S|,#|A|) :=
   \matrix_(i < #|S|, j < #|A|) mat_coef (enum_val i) (enum_val j).
 
-Definition adapted n (S : {set sT^n}) (A : {set aT^n}) :=
+Definition adapted n (S : {set X^n}) (A : {set X^n}) :=
   (#|A| == #|S|) && row_free (mat S A).
 
-Fixpoint adapt n (S : {set sT^n}) : {set aT^n} :=
-  match n return {set sT^n} -> {set aT^n} with
+Fixpoint adapt n (S : {set X^n}) : {set X^n} :=
+  match n return {set X^n} -> {set X^n} with
     | 0     => fun S => S
     | n'.+1 => fun S => \bigcup_(i < k) extset i (adapt (Xi i.+1 S))
   end S.
 Arguments adapt n S : simpl never.
 
-Lemma adapt0 (S : {set sT^0}) : adapt S = S.
+Lemma adapt0 (S : {set X^0}) : adapt S = S.
 Proof. by []. Qed.
 
-Lemma adaptS n (S : {set sT^n.+1}) :
+Lemma adaptS n (S : {set X^n.+1}) :
   adapt S = \bigcup_(i < k) extset i (adapt (Xi i.+1 S)).
 Proof. by []. Qed.
 
@@ -428,14 +425,14 @@ apply/set0Pn; exists (extelt ord0 x).
 by apply/bigcupP; exists 0 => //; rewrite !extE.
 Qed.
 
-Lemma subset_adapt n (S S' : {set sT^n}) :
+Lemma subset_adapt n (S S' : {set X^n}) :
   S \subset S' -> adapt S \subset adapt S'.
 Proof.
 elim: n => [//|n IHn] in S S' * => subSS' /=; apply/bigcupsP => i _.
 by rewrite (bigcup_max i) // subset_extset IHn // subset_Xi.
 Qed.
 
-Lemma in_adapt n (S : {set sT^n.+1}) (a : aT^n.+1) :
+Lemma in_adapt n (S : {set X^n.+1}) (a : X^n.+1) :
   (a \in adapt S) = (restrict a \in adapt (Xi (a 0).+1 S)).
 Proof.
 move=> /=; apply/bigcupP/idP => [[i _ /imsetP [s sAXi ->]]|].
@@ -443,7 +440,7 @@ move=> /=; apply/bigcupP/idP => [[i _ /imsetP [s sAXi ->]]|].
 by move=> ra; exists (a 0); rewrite ?extE.
 Qed.
 
-Lemma adapt_down_closed  n (S : {set sT^n}) (a b : aT^n) :
+Lemma adapt_down_closed  n (S : {set X^n}) (a b : X^n) :
   (forall i, b i <= a i)%N -> a \in adapt S -> b \in adapt S.
 Proof.
 elim: n => [|/= n IHn] in S a b *.
@@ -454,7 +451,7 @@ have: restrict b \in adapt (Xi (a 0).+1 S).
 by apply: subsetP; rewrite subset_adapt ?leq_Xi ?ltnS ?leq_ba.
 Qed.
 
-Lemma partition_adapt n (S : {set sT^n.+1}) :
+Lemma partition_adapt n (S : {set X^n.+1}) :
   partition [set extset i (adapt (Xi (i : X).+1 S))
             | i in X & Xi i.+1 S != set0] (adapt S).
 Proof.
@@ -468,7 +465,7 @@ apply: contraNT; rewrite -setI_eq0 => /set0Pn [/= s].
 by rewrite !inE !mem_extset -!andbA => /and4P [/eqP -> _ /eqP -> _].
 Qed.
 
-Lemma card_adapt n (S : {set sT^n}) : #|adapt S| = #|S|.
+Lemma card_adapt n (S : {set X^n}) : #|adapt S| = #|S|.
 Proof.
 elim: n => [//|n IHn] in S *.
 rewrite (card_partition (partition_adapt S)).
@@ -482,11 +479,11 @@ apply: eq_bigr => i _; rewrite card_extset IHn card_imset //=.
 by move=> s t /= /eqP; rewrite eq_extelt => /andP [_ /eqP].
 Qed.
 
-Lemma prop1084 n (S : {set sT^n}) (a : aT^n) : a \in adapt S ->
+Lemma prop1084 n (S : {set X^n}) (a : X^n) : a \in adapt S ->
   (#|[set i | a i != 0%R]| <= trunc_log 2 #|S|)%N.
 Proof.
 move=> a_adapt; apply: trunc_log_max => //.
-pose B := [set b : aT^n | [forall i, (b i != 0) ==> (b i == a i)]].
+pose B := [set b : X^n | [forall i, (b i != 0) ==> (b i == a i)]].
 apply: (@leq_trans #|B|) => [{a_adapt}|]; last first.
   rewrite -(card_adapt S) subset_leq_card //; apply/subsetP => b.
   rewrite in_set => /forallP bP; apply: adapt_down_closed a_adapt => i.
@@ -509,7 +506,7 @@ apply/ffunP => i; rewrite ffunE in_set.
 by case: ifPn => [/bP /eqP <- //|]; rewrite negbK => /eqP.
 Qed.
 
-Lemma adapt_adapted n (S : {set sT^n}) : adapted S (adapt S).
+Lemma adapt_adapted n (S : {set X^n}) : adapted S (adapt S).
 Proof.
 rewrite /adapted {1}card_adapt eqxx /=.
 elim: n => [|n IHn] in S *.
