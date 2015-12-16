@@ -565,8 +565,8 @@ Section Signdet3.
 Implicit Types (k : 'I_3).
 
 Definition sign k : rat := if (k >= 2)%N then -1 else k%:Q.
-Definition ctmat3   := \matrix_(i < 3, j < 3) sign i ^+ j.
-Definition ctmat2 k := \matrix_(i < 2, j < 2) sign (lift k i) ^+ j.
+Definition ctmat3   := \matrix_(i < 3, j < 3) sign i ^ j.
+Definition ctmat2 k := \matrix_(i < 2, j < 2) sign (lift k i) ^ j.
 
 Lemma det_ctmat2 k : \det (ctmat2 k) =
   if (k <= 0)%N then - 2%:Q else if (k > 1)%N then 1 else -1.
