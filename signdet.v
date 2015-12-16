@@ -473,28 +473,26 @@ Qed.
 Proposition prop1084 n (S : {set X^n}) (a : X^n) : a \in adapt S ->
   (#|[set i | a i != 0%R]| <= trunc_log 2 #|S|)%N.
 Proof.
-move=> a_adapt; apply: trunc_log_max => //.
-pose B := [set b : X^n | [forall i, (b i != 0) ==> (b i == a i)]].
-apply: (@leq_trans #|B|) => [{a_adapt}|]; last first.
+set A := [set i | _]; move=> a_adapt; apply: trunc_log_max => //.
+pose AV0 := [set b : X^n | [forall i, (b i != 0) ==> (b i == a i)]].
+pose nullify (I : {set _}) : X ^ n := [ffun i => if i \in I then a i else 0].
+apply: (@leq_trans #|AV0|) => [{a_adapt}|]; last first.
   rewrite -(card_adapt S) subset_leq_card //; apply/subsetP => b.
   rewrite in_set => /forallP bP; apply: adapt_down_closed a_adapt => i.
   by have := bP i; rewrite implyNb => /orP [/eqP ->|/eqP ->].
-suff -> : B = [set [ffun i => if i \in (I : {set _}) then a i else 0]
-              | I in powerset [set i | a i != 0]].
+suff -> : AV0 = nullify @: powerset A.
   rewrite card_in_imset; first by rewrite card_powerset leqnn.
   move=> I J /=; rewrite !in_set => PI PJ eqIJ; apply/setP => i.
   have := congr1 (fun f : {ffun _ -> _} => f i == 0) eqIJ; rewrite !ffunE.
   have [] := (subsetP PI i, subsetP PJ i); rewrite in_set.
   case: (i \in I) => [/(_ isT) /negPf ->|_];
   by case: (i \in J) => // /(_ isT) /negPf ->.
-apply/setP => b; rewrite in_set.
-apply/'forall_implyP/imsetP => [bP|[I]]; last first.
+apply/setP => b; rewrite !inE.
+apply/'forall_implyP/imsetP => [bP|[I]] /=; last first.
   by rewrite powersetE => /subsetP IP -> i; rewrite !ffunE; case: ifP.
-exists [set i | b i != 0].
-  rewrite powersetE; apply/subsetP => i; rewrite !in_set => b_neq0.
-  by rewrite -(eqP (bP _ _)).
-apply/ffunP => i; rewrite ffunE in_set.
-by case: ifPn => [/bP /eqP <- //|]; rewrite negbK => /eqP.
+exists [set i | b i != 0]; move=> /(_ _ _) /eqP in bP.
+  by rewrite powersetE; apply/subsetP => i; rewrite !in_set => bi; rewrite -bP.
+by apply/ffunP => i; rewrite ffunE in_set; have [//|/bP->] := altP eqP.
 Qed.
 
 Theorem adapt_adapted n (S : {set X^n}) : adapted S (adapt S).
