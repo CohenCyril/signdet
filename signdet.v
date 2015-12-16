@@ -175,7 +175,7 @@ Qed.
 Lemma subset_exts r : {homo exts^~ r : S S' / S \subset S'}.
 Proof. by move=> ???; apply/subsetP=> x; rewrite !inE; apply/subsetP. Qed.
 
-Lemma subset_Xi m : {homo @Xi m : S S' / S \subset S'}.
+Lemma subset_Xi m : {homo Xi m : S S' / S \subset S'}.
 Proof.
 move=> S S' subSS'; apply/subsetP=> s; rewrite !in_set => /leq_trans-> //.
 exact/subset_leq_card/subset_exts.
@@ -198,15 +198,6 @@ Proof.
 apply/idP/idP=> [|/eqP->]; last by rewrite Xi0.
 apply: contraTT => /set0Pn [x xS].
 by apply/set0Pn; exists (restrict x); apply: restrict_inW.
-Qed.
-
-Lemma Xi_eq0 S i : (Xi i.+1 S == set0) = [forall s, #|exts S s| <= i].
-Proof.
-apply/eqP/forallP => [XiiS_eq0 s|].
-  apply: contra_eqT XiiS_eq0; rewrite -ltnNge => i_small.
-  by apply/set0Pn; exists s; rewrite inE.
-move=> few_s; apply: contraTeq isT => /set0Pn /= [s].
-by rewrite inE ltnNge few_s.
 Qed.
 
 End ExtX.
@@ -425,6 +416,20 @@ apply/set0Pn; exists (extelt ord0 x).
 by apply/bigcupP; exists 0 => //; rewrite !extE.
 Qed.
 
+Lemma partition_adapt n (S : {set X^n.+1}) :
+  partition [set extset i (adapt (Xi (i : X).+1 S))
+            | i in X & Xi i.+1 S != set0] (adapt S).
+Proof.
+apply/and3P; split; [apply/eqP|apply/trivIsetP|apply/imsetP]; last 1 first.
+- by move=> [i]; rewrite inE -adapt_eq0 -(extset_eq0 i) eq_sym => /eqP.
+- rewrite adaptE (bigID [pred i : 'I__ | Xi i.+1 S == set0]) /=.
+  rewrite big1 ?set0U; last by move=> i /eqP ->; rewrite adaptn0 extset0.
+  by rewrite cover_imset; apply: eq_bigl => i; rewrite inE.
+move=> _ _ /imsetP [i _ ->] /imsetP [j _ ->].
+apply: contraNT; rewrite -setI_eq0 => /set0Pn [/= s].
+by rewrite !inE !mem_extset -!andbA => /and4P [/eqP -> _ /eqP -> _].
+Qed.
+
 Lemma subset_adapt n (S S' : {set X^n}) :
   S \subset S' -> adapt S \subset adapt S'.
 Proof.
@@ -440,31 +445,6 @@ move=> /=; apply/bigcupP/idP => [[i _ /imsetP [s sAXi ->]]|].
 by move=> ra; exists (a 0); rewrite ?extE.
 Qed.
 
-Lemma adapt_down_closed  n (S : {set X^n}) (a b : X^n) :
-  (forall i, b i <= a i)%N -> a \in adapt S -> b \in adapt S.
-Proof.
-elim: n => [|/= n IHn] in S a b *.
-  by move=> _; rewrite (fintype1 b) // card_ffun !card_ord.
-move=> leq_ba; rewrite !in_adapt => raAXi.
-have: restrict b \in adapt (Xi (a 0).+1 S).
-  by apply: IHn raAXi => i; rewrite !ffunE leq_ba.
-by apply: subsetP; rewrite subset_adapt ?leq_Xi ?ltnS ?leq_ba.
-Qed.
-
-Lemma partition_adapt n (S : {set X^n.+1}) :
-  partition [set extset i (adapt (Xi (i : X).+1 S))
-            | i in X & Xi i.+1 S != set0] (adapt S).
-Proof.
-apply/and3P; split; [apply/eqP|apply/trivIsetP|apply/imsetP]; last 1 first.
-- by move=> [i]; rewrite inE -adapt_eq0 -(extset_eq0 i) eq_sym => /eqP.
-- rewrite adaptE (bigID [pred i : 'I__ | Xi i.+1 S == set0]) /=.
-  rewrite big1 ?set0U; last by move=> i /eqP ->; rewrite adaptn0 extset0.
-  by rewrite cover_imset; apply: eq_bigl => i; rewrite inE.
-move=> _ _ /imsetP [i _ ->] /imsetP [j _ ->].
-apply: contraNT; rewrite -setI_eq0 => /set0Pn [/= s].
-by rewrite !inE !mem_extset -!andbA => /and4P [/eqP -> _ /eqP -> _].
-Qed.
-
 Lemma card_adapt n (S : {set X^n}) : #|adapt S| = #|S|.
 Proof.
 elim: n => [//|n IHn] in S *.
@@ -477,6 +457,17 @@ rewrite (card_partition (partition_reext S)) !big_imset /=; last 2 first.
   by move=> /andP [/eqP ? _].
 apply: eq_bigr => i _; rewrite card_extset IHn card_imset //=.
 by move=> s t /= /eqP; rewrite eq_extelt => /andP [_ /eqP].
+Qed.
+
+Lemma adapt_down_closed  n (S : {set X^n}) (a b : X^n) :
+  (forall i, b i <= a i)%N -> a \in adapt S -> b \in adapt S.
+Proof.
+elim: n => [|/= n IHn] in S a b *.
+  by move=> _; rewrite (fintype1 b) // card_ffun !card_ord.
+move=> leq_ba; rewrite !in_adapt => raAXi.
+have: restrict b \in adapt (Xi (a 0).+1 S).
+  by apply: IHn raAXi => i; rewrite !ffunE leq_ba.
+by apply: subsetP; rewrite subset_adapt ?leq_Xi ?ltnS ?leq_ba.
 Qed.
 
 Lemma prop1084 n (S : {set X^n}) (a : X^n) : a \in adapt S ->
