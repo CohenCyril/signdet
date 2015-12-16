@@ -23,32 +23,6 @@ suff: #|T| >= #|[set y; x]| by rewrite cards2 neq_yx => /gtn_eqF ->.
 by apply/subset_leqif_card/subsetP=> z /set2P [] ->; rewrite inE.
 Qed.
 
-Definition ffun0 (T : finType) (X : Type) : #|T| = 0 -> {ffun T -> X}.
-Proof. by move=> /card0_eq T0; apply: finfun => t; move: (T0 t). Defined.
-
-Lemma bump_small n i : i < n -> bump n i = i.
-Proof. by move=> ltin; rewrite /bump leqNgt ltin add0n. Qed.
-
-Lemma lift_ord_max n (i : 'I_n) :
-   lift ord_max i = widen_ord (leqnSn n) i.
-Proof. by apply: val_inj=> /=; rewrite bump_small. Qed.
-
-Lemma insubd_id (X : Type) (P : pred X) (S : subType P) (x y : S) :
-  insubd x (val y) = y.
-Proof. by apply: val_inj; rewrite insubdK //; apply: valP. Qed.
-
-Lemma leqif_eq n m C : n <= m ?= iff C -> C -> n = m.
-Proof. by case: C => [[_ /eqP]|//]. Qed.
-
-Lemma leq_index (T : eqType) (x : T) s s' : x \in s ->
-  uniq s' -> subseq s s' -> index x s <= index x s'.
-Proof.
-move=> xs' us' /subseqP [m sm s_eq]; rewrite s_eq in xs' * => {s s_eq}.
-elim: s' m sm us' xs' => [//|y r IHr] [|[] m] //= [sm] /andP [/negPf ys' us'].
-   by rewrite inE eq_sym; have [//|? /IHr] := altP eqP; apply.
-by have [<- /mem_mask|? xs'] := altP eqP; [rewrite ys'|apply/leqW/IHr].
-Qed.
-
 Lemma reindex_enum_cond (R : Type) (idx : R) (op : Monoid.com_law idx)
   (X : finType) (S : {set X}) s0 (s0S : s0 \in S)
   (P : pred 'I_#|S|) (F : 'I_#|S| -> R) (h := enum_rank_in s0S) :
@@ -305,24 +279,6 @@ Proof. by rewrite -nthext_in indexextK. Qed.
 
 Lemma nthext_inj S r : injective (nthext S r).
 Proof. exact: can_inj (@nthextK _ _). Qed.
-
-Lemma sub_indexext S S' r x : x \in exts S r ->
-  S \subset S' -> indexext S r x <= indexext S' r x.
-Proof.
-move=> rS SsubS'; rewrite /indexext /= !index_cat ?mem_sort ?mem_enum rS.
-rewrite (subsetP (subset_exts _ SsubS')) //.
-rewrite leq_index ?mem_sort ?mem_enum ?sort_uniq ?enum_uniq //.
-set l1 := sort _ _; set l2 := sort _ _.
-suff -> : l1 = [seq y <- l2 | y \in exts S r] by apply: filter_subseq.
-apply: (@eq_sorted _ (fun (i j : 'I_k) => val i <= val j)).
-- exact: leq_trans.
-- by move=> a b ?; apply/val_inj/anti_leq.
-- exact/sort_sorted/leq_total.
-- by rewrite sorted_filter; [|apply: leq_trans|apply/sort_sorted/leq_total].
-rewrite uniq_perm_eq // ?filter_uniq ?sort_uniq ?enum_uniq // => i.
-rewrite mem_filter ?mem_sort ?mem_enum; symmetry.
-by have [|] //= := boolP (i \in exts S r); apply/subsetP/subset_exts.
-Qed.
 
 Lemma exts_leq S r : #|exts S r| <= k.
 Proof. by rewrite (leq_trans (card_exts _ _)) ?card_ord. Qed.
