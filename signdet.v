@@ -613,7 +613,7 @@ Qed.
 
 End AbstractSigndet.
 
-Section Signdet.
+Section Signdet3.
 
 Implicit Types (k : 'I_3).
 
@@ -689,4 +689,4 @@ Qed.
 Theorem ctmat_adapted n (S : {set 'I_3 ^ n}) : adapted ctmat3 S (adapt S).
 Proof. exact/adapt_adapted/row_free_ctmat1. Qed.
 
-End Signdet.
+End Signdet3.
