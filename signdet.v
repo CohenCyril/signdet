@@ -94,12 +94,10 @@ Implicit Types (S : {set X ^ n.+1}) (R : {set X ^ n}).
 Implicit Types (s : X ^ n.+1) (r : X ^ n) (x y : X) (m : nat).
 
 (* Extension of s with one element x at the end *)
-Definition extelt x (s : X ^ n) : X ^ n.+1 :=
-  [ffun i => if unlift 0%R i is Some j then s j else x].
+Definition extelt x r : X ^ n.+1 := [ffun i => oapp r x (unlift 0%R i)].
 
 (* Restriction of b, without the last element, the inverse of extelt *)
-Definition restrict (b : X ^ n.+1) : X ^ n :=
-  [ffun i => b (lift 0%R i)].
+Definition restrict s : X ^ n := [ffun i => s (lift 0%R i)].
 
 (* extension of a set with one element x at the end. *)
 Definition extset x R : {set X ^ n.+1} := [set extelt x s | s in R].
@@ -113,11 +111,11 @@ Definition Xi m S : {set X ^ n} := [set s | m <= #|exts S s|].
 
 Lemma restrictK s : extelt (s 0%R) (restrict s) = s.
 Proof.
-by apply/ffunP=> i; rewrite ffunE; case: unliftP => [j|] ->; rewrite ?ffunE.
+by apply/ffunP=> i; rewrite ffunE; case: unliftP => [j|] ->; rewrite //= ffunE.
 Qed.
 
 Lemma exteltK x : cancel (extelt x) restrict.
-Proof. by move=> b ;apply/ffunP=> i; rewrite !ffunE liftK. Qed.
+Proof. by move=> b; apply/ffunP=> i; rewrite !ffunE liftK. Qed.
 
 Lemma restrictP S s r : reflect (exists i, s = extelt i r) (restrict s == r).
 Proof.
@@ -617,16 +615,14 @@ End AbstractSigndet.
 
 Section Signdet.
 
-Definition sign (i : 'I_3) : int :=
-  match val i with 0 => 0%R | 1 => 1%R | _ => -1%R end.
+Implicit Types (k : 'I_3).
 
-Definition ctmat3 := \matrix_(i < 3, j < 3) (sign i)%:Q ^+ j.
-
-Definition ctmat2 (k : 'I_3) : 'M[rat]_2 :=
-  \matrix_(i,j) (sign (lift k i))%:Q ^+ j.
+Definition sign k : int := if k >= 2 then -1%R else k%:Z.
+Definition ctmat3   := \matrix_(i < 3, j < 3) (sign i)%:Q ^+ j.
+Definition ctmat2 k := \matrix_(i < 2, j < 2) (sign (lift k i))%:Q ^+ j.
 
 Lemma det_ctmat2 k : \det (ctmat2 k) =
- if val k == 0 then - 2%:Q else if val k == 1 then - 1%R else 1%R.
+  if k <= 0 then - 2%:Q else if k > 1 then 1%R else - 1%R.
 Proof.
 case: k => [[|[|[|?]]] ?] //=;
 rewrite (expand_det_col _ 0%R) !big_ord_recl big_ord0;
