@@ -11,7 +11,6 @@ Unset Printing Implicit Defensive.
 
 Import GRing.Theory Num.Theory Num.Def Pdiv.Ring Pdiv.ComRing.
 
-Local Open Scope ring_scope.
 Local Open Scope nat_scope.
 
 Section extrassr.
@@ -48,15 +47,17 @@ Lemma row_free_inj (F : fieldType) (m n p : nat) (A : 'M[F]_(n, p)) :
   row_free A -> injective (mulmxr A : 'M_(m, n) -> _).
 Proof. exact: row_free_inj. Qed.
 
+Local Open Scope ring_scope.
+
 Lemma inj_row_free (F : fieldType) (n p : nat) (A : 'M[F]_(n, p)) :
-  (forall v : 'rV_n, v *m A = 0%R -> v = 0%R) -> row_free A.
+  (forall v : 'rV_n, v *m A = 0 -> v = 0) -> row_free A.
 Proof.
 move=> Ainj; rewrite -kermx_eq0; apply/eqP.
 apply/row_matrixP => i; rewrite row0; apply/Ainj.
 by rewrite -row_mul mulmx_ker row0.
 Qed.
 
-Lemma det_mx11 (R : comRingType) (M : 'M[R]_1) : \det M = M 0%R 0%R.
+Lemma det_mx11 (R : comRingType) (M : 'M[R]_1) : \det M = M 0 0.
 Proof. by rewrite {1}[M]mx11_scalar det_scalar. Qed.
 
 End extrassr.
@@ -138,7 +139,7 @@ Proof.
 by move=> sS; rewrite inE; apply/card_gt0P; exists (s 0%R); rewrite !extE.
 Qed.
 
-Lemma extset0 x : extset x set0 = set0 :> {set X ^ n.+1}.
+Lemma extset0 x : extset x set0 = set0.
 Proof. by rewrite /extset imset0. Qed.
 
 Lemma extsetK x : cancel (extset x) (Xi 1).
@@ -148,11 +149,10 @@ move=> S; apply/setP => /= s; apply/idP/idP => [|sS]; last first.
 by rewrite inE => /card_gt0P [y]; rewrite inE mem_extset ?extE => /andP [].
 Qed.
 
-Fact ord0_in_exts (S : {set X ^ n.+1})
-  (s : X ^ n.+1) : s \in S -> s 0%R \in exts S (restrict s).
+Fact ord0_in_exts S s : s \in S -> s 0%R \in exts S (restrict s).
 Proof. by rewrite !extE. Qed.
 
-Lemma extset_eq0 x (S : {set X ^ n}) : (extset x S == set0) = (S == set0).
+Lemma extset_eq0 x R : (extset x R == set0) = (R == set0).
 Proof. by rewrite -(extset0 x) (can_eq (extsetK _)). Qed.
 
 Lemma eq_extset x y R R' :
@@ -193,7 +193,7 @@ Proof. by apply/setP => i; rewrite inE. Qed.
 Lemma Xi0 i : i > 0 -> Xi i set0 = set0.
 Proof. by case: i => // i _; apply/setP => e; rewrite !inE exts0 cards0. Qed.
 
-Lemma Xi1_eq0  S : (Xi 1 S == set0) = (S == set0).
+Lemma Xi1_eq0 S : (Xi 1 S == set0) = (S == set0).
 Proof.
 apply/idP/idP=> [|/eqP->]; last by rewrite Xi0.
 apply: contraTT => /set0Pn [x xS].
@@ -364,27 +364,30 @@ Qed.
 
 End ExtIk.
 
+Local Open Scope ring_scope.
+
 Section AbstractSigndet.
 
+Variable F : fieldType.
 Variable k' : nat.
 Let k := k'.+1.
-Variable M : 'M[rat]_k.
+Variable M : 'M[F]_k.
 
 Let Sgn n := ('I_k ^ n)%type.
 Let Exp n := ('I_k ^ n)%type.
 Let X := 'I_k.
 
-Definition mat1 (S : {set X}) : 'M[rat]_#|S| :=
+Definition mat1 (S : {set X}) : 'M[F]_#|S| :=
   \matrix_(i, j) M (enum_val i) (inord j).
 
 Hypothesis row_free_mat1 : forall (S : {set X}), row_free (mat1 S).
 
-Definition mat_coef n (i : Sgn n) (j : Exp n) := (\prod_k M (i k) (j k))%R.
+Definition mat_coef n (i : Sgn n) (j : Exp n) := \prod_k M (i k) (j k).
 
 Lemma mat_coefS n (s : Sgn n.+1) (a : Exp n.+1) :
-  mat_coef s a = (M (s 0%R) (a 0%R) * mat_coef (restrict s) (restrict a))%R.
+  mat_coef s a = M (s 0) (a 0) * mat_coef (restrict s) (restrict a).
 Proof.
-rewrite /mat_coef /= big_ord_recl; congr (_ * _)%R.
+rewrite [LHS]big_ord_recl; congr (_ * _).
 by apply: eq_bigr => i _; rewrite !ffunE.
 Qed.
 
@@ -422,7 +425,7 @@ elim: n => [|n IHn] // in S *.
 apply/idP/idP => [/=|/eqP ->]; last by rewrite adaptn0.
 apply: contraTT; rewrite -Xi1_eq0 -IHn => /set0Pn [x x_adaX].
 apply/set0Pn; exists (extelt ord0 x).
-by apply/bigcupP; exists 0%R => //; rewrite !extE.
+by apply/bigcupP; exists 0 => //; rewrite !extE.
 Qed.
 
 Lemma subset_adapt n (S S' : {set Sgn n}) :
@@ -433,11 +436,11 @@ by rewrite (bigcup_max i) // subset_extset IHn // subset_Xi.
 Qed.
 
 Lemma in_adapt n (S : {set Sgn n.+1}) (a : Exp n.+1) :
-  (a \in adapt S) = (restrict a \in adapt (Xi (a 0%R).+1 S)).
+  (a \in adapt S) = (restrict a \in adapt (Xi (a 0).+1 S)).
 Proof.
 move=> /=; apply/bigcupP/idP => [[i _ /imsetP [s sAXi ->]]|].
   by rewrite ?extE.
-by move=> ra; exists (a 0%R); rewrite ?extE.
+by move=> ra; exists (a 0); rewrite ?extE.
 Qed.
 
 Lemma adapt_down_closed  n (S : {set Sgn n}) (a b : Exp n) :
@@ -446,7 +449,7 @@ Proof.
 elim: n => [|/= n IHn] in S a b *.
   by move=> _; rewrite (fintype1 b) // card_ffun !card_ord.
 move=> leq_ba; rewrite !in_adapt => raAXi.
-have: restrict b \in adapt (Xi (a 0%R).+1 S).
+have: restrict b \in adapt (Xi (a 0).+1 S).
   by apply: IHn raAXi => i; rewrite !ffunE leq_ba.
 by apply: subsetP; rewrite subset_adapt ?leq_Xi ?ltnS ?leq_ba.
 Qed.
@@ -480,26 +483,26 @@ by move=> s t /= /eqP; rewrite eq_extelt => /andP [_ /eqP].
 Qed.
 
 Lemma prop1084 n (S : {set Sgn n}) (a : Exp n) : a \in adapt S ->
-  #|[set i | a i != 0%R]| <= trunc_log 2 #|S|.
+  (#|[set i | a i != 0%R]| <= trunc_log 2 #|S|)%N.
 Proof.
 move=> a_adapt; apply: trunc_log_max => //.
-pose B := [set b : Exp n | [forall i, (b i != 0%R) ==> (b i == a i)]].
+pose B := [set b : Exp n | [forall i, (b i != 0) ==> (b i == a i)]].
 apply: (@leq_trans #|B|) => [{a_adapt}|]; last first.
   rewrite -(card_adapt S) subset_leq_card //; apply/subsetP => b.
   rewrite in_set => /forallP bP; apply: adapt_down_closed a_adapt => i.
   by have := bP i; rewrite implyNb => /orP [/eqP ->|/eqP ->].
-suff -> : B = [set [ffun i => if i \in (I : {set _}) then a i else 0%R]
-              | I in powerset [set i | a i != 0%R]].
+suff -> : B = [set [ffun i => if i \in (I : {set _}) then a i else 0]
+              | I in powerset [set i | a i != 0]].
   rewrite card_in_imset; first by rewrite card_powerset leqnn.
   move=> I J /=; rewrite !in_set => PI PJ eqIJ; apply/setP => i.
-  have := congr1 (fun f : {ffun _ -> _} => f i == 0%R) eqIJ; rewrite !ffunE.
+  have := congr1 (fun f : {ffun _ -> _} => f i == 0) eqIJ; rewrite !ffunE.
   have [] := (subsetP PI i, subsetP PJ i); rewrite in_set.
   case: (i \in I) => [/(_ isT) /negPf ->|_];
   by case: (i \in J) => // /(_ isT) /negPf ->.
 apply/setP => b; rewrite in_set.
 apply/'forall_implyP/imsetP => [bP|[I]]; last first.
   by rewrite powersetE => /subsetP IP -> i; rewrite !ffunE; case: ifP.
-exists [set i | b i != 0%R].
+exists [set i | b i != 0].
   rewrite powersetE; apply/subsetP => i; rewrite !in_set => b_neq0.
   by rewrite -(eqP (bP _ _)).
 apply/ffunP => i; rewrite ffunE in_set.
@@ -522,47 +525,47 @@ have /set0Pn [/= a a_in] : adapt S != set0 by rewrite adapt_eq0.
 apply/inj_row_free => L LN0.
 apply/rowP => j; rewrite mxE -(enum_valK_in s_in j).
 move: (enum_val j) (enum_valP j) => /= t t_in {j}.
-pose F t := L 0%R (enum_rank_in s_in t); rewrite /= in F; rewrite -/(F _).
+pose l t := L 0 (enum_rank_in s_in t); rewrite /= in l; rewrite -/(l _).
 pose r := #|exts S (restrict t)|.
-move: r (leqnn r :  #|exts S (restrict t)| <= r) => r.
+move: r (leqnn r : #|exts S (restrict t)| <= r)%N => r.
 elim: r => [|/= r IHr] in t t_in *.
   by rewrite leqn0 cards_eq0 (negPf (exts_restrict_neq0 _)).
 rewrite leq_eqVlt => /predU1P [extrt|]; last exact: IHr.
 suff: \row_(j < #|exts S (restrict t)|)
-       F (extelt (enum_val j) (restrict t)) == 0%R.
-  move=> /eqP /rowP /(_ (enum_rank_in (ord0_in_exts t_in) (t 0%R))).
+       l (extelt (enum_val j) (restrict t)) == 0.
+  move=> /eqP /rowP /(_ (enum_rank_in (ord0_in_exts t_in) (t 0))).
   by rewrite !mxE ?enum_rankK_in ?ord0_in_exts ?extE.
 have /row_free_inj /raddf_eq0 /= <- := row_free_mat1 (exts S (restrict t)).
 apply/eqP/rowP => /= j; rewrite !mxE /=.
 rewrite (reindex_enum _ (ord0_in_exts t_in)) /= -/t.
-rewrite (eq_bigr (fun x => F (extelt x (restrict t)) * M x (inord j))%R);
+rewrite (eq_bigr (fun x => l (extelt x (restrict t)) * M x (inord j)));
   last by move=> x x_in; rewrite !mxE ?enum_rankK_in //= /tmp.
-pose G i t' := (\sum_(x in exts S t') F (extelt x t') * M x i)%R.
+pose G i t' := (\sum_(x in exts S t') l (extelt x t') * M x i).
 rewrite /= in G *; rewrite -/(G _ _).
 have rt : restrict t \in Xi r.+1 S by rewrite inE extrt.
-suff : \row_(r < #|Xi r.+1 S|) G (inord j) (enum_val r) == 0%R.
+suff : \row_(r < #|Xi r.+1 S|) G (inord j) (enum_val r) == 0.
   move=> /eqP /rowP /(_ (enum_rank_in rt (restrict t))).
   by rewrite !mxE ?enum_rankK_in //.
 have /row_free_inj /raddf_eq0 /= <- := IHn (Xi r.+1 S).
-apply/eqP/rowP => l; rewrite !mxE (reindex_enum _ rt) /=.
-evar (tmp : X ^ n -> rat); rewrite (eq_bigr tmp); last first.
+apply/eqP/rowP => m; rewrite !mxE (reindex_enum _ rt) /=.
+evar (tmp : X ^ n -> F); rewrite (eq_bigr tmp); last first.
   by move=> x x_in; rewrite !mxE ?enum_rankK_in //= mulr_suml /tmp.
 rewrite /tmp {tmp} /G /=; set f := BIG_F.
-transitivity (\sum_(i in Xi 1 S) f i)%R.
+transitivity (\sum_(i in Xi 1 S) f i).
   symmetry; rewrite (big_setID (Xi r.+1 S)) /= (setIidPr _) ?leq_Xi //.
-  rewrite [X in (_ + X)%R]big1 ?addr0 // => u.
+  rewrite [X in (_ + X)]big1 ?addr0 // => u.
   rewrite !inE -leqNgt => /andP [u_small _].
   by rewrite /f big1 // => x; rewrite inE => ?; rewrite IHr ?mul0r //= exteltK.
-rewrite pair_big_dep (reindex (fun a => (restrict a, a 0%R))); last first.
+rewrite pair_big_dep (reindex (fun a => (restrict a, a 0))); last first.
   by exists (fun p => extelt p.2 p.1); move=> [??] /=; rewrite ?extE.
-have /= := congr1 (fun X : 'M__ => X 0%R
-  (enum_rank_in a_in (extelt (inord j) (enum_val l)))) LN0.
+have /= := congr1 (fun X : 'M__ => X 0
+  (enum_rank_in a_in (extelt (inord j) (enum_val m)))) LN0.
 rewrite !mxE (reindex_enum _ s_in) /= => LN0_eq0.
 rewrite -[RHS]LN0_eq0; symmetry; apply: eq_big => [u|u uS].
   rewrite [_ \in exts _ _]inE restrictK andbC.
   by have [/restrict_inW|//] := boolP (u \in S).
-rewrite !mxE ?extE ?enum_rankK_in /F ?mat_coefS ?extE ?mulrA // extelt_in.
-move: (enum_val l) (enum_valP l) => /= b b_in; rewrite inE in_adapt ?extE.
+rewrite !mxE ?extE ?enum_rankK_in /l ?mat_coefS ?extE ?mulrA // extelt_in.
+move: (enum_val m) (enum_valP m) => /= b b_in; rewrite inE in_adapt ?extE.
 apply: subsetP b_in; rewrite subset_adapt // leq_Xi // inordK //= -?extrt //.
 by rewrite (leq_trans (ltn_ord j)) ?exts_leq.
 Qed.
@@ -573,15 +576,15 @@ Section Signdet3.
 
 Implicit Types (k : 'I_3).
 
-Definition sign k : rat := if k >= 2 then -1%R else k%:Q.
+Definition sign k : rat := if (k >= 2)%N then -1 else k%:Q.
 Definition ctmat3   := \matrix_(i < 3, j < 3) sign i ^+ j.
 Definition ctmat2 k := \matrix_(i < 2, j < 2) sign (lift k i) ^+ j.
 
 Lemma det_ctmat2 k : \det (ctmat2 k) =
-  if k <= 0 then - 2%:Q else if k > 1 then 1%R else - 1%R.
+  if (k <= 0)%N then - 2%:Q else if (k > 1)%N then 1 else -1.
 Proof.
 case: k => [[|[|[|?]]] ?] //=;
-rewrite (expand_det_col _ 0%R) !big_ord_recl big_ord0;
+rewrite (expand_det_col _ 0) !big_ord_recl big_ord0;
 rewrite /cofactor ?det_mx11 !mxE /sign //=;
 by rewrite ?(mul0r, expr0, expr1, mul1r, addr0, add0r).
 Qed.
@@ -589,9 +592,9 @@ Qed.
 Lemma det_ctmat3 : \det ctmat3 = 2%:Q.
 Proof.
 rewrite (expand_det_col _ ord_max).
-transitivity (\sum_i ctmat3 i ord_max * ((-1) ^+ i * \det (ctmat2 i)))%R;
+transitivity (\sum_i ctmat3 i ord_max * ((-1) ^+ i * \det (ctmat2 i)));
   last by rewrite !big_ord_recl big_ord0 !mxE !det_ctmat2.
-apply: eq_bigr => i _; congr (_ * (_ *  _))%R; last congr (\det _).
+apply: eq_bigr => i _; congr (_ * (_ *  _)); last congr (\det _).
   by rewrite -signr_odd odd_add addbF signr_odd.
 by apply/matrixP => /= k l; rewrite !mxE //=; case: l => [[|[|?]] ?].
 Qed.
@@ -604,10 +607,10 @@ have -> : mat1 ctmat3 S = M _.
   apply/matrixP => i j; rewrite !mxE inordK -?enum_val_nth //.
   by rewrite (leq_trans (ltn_ord _)).
 move: cardS; have enumI3E : enum 'I_3 = [seq inord i | i <- iota 0 3].
-  apply: (@eq_from_nth _ 0%R).
+  apply: (@eq_from_nth _ 0).
     by rewrite -cardE card_ord size_map size_iota.
   move=> i; rewrite -cardE card_ord => i_small.
-  rewrite -{1}[i](@inordK 2) // nth_ord_enum (nth_map 0) //=.
+  rewrite -{1}[i](@inordK 2) // nth_ord_enum (nth_map 0%N) //=.
   by case: i i_small => [|[|[|?]]].
 do 3?[rewrite leq_eqVlt orbC => /orP []; rewrite ?ltnS ?leqn0].
 - rewrite cards_eq0 => /eqP ->; rewrite row_free_unit unitmxE.
@@ -617,7 +620,7 @@ do 3?[rewrite leq_eqVlt orbC => /orP []; rewrite ?ltnS ?leqn0].
   apply/matrixP => i j; rewrite !mxE.
   have := enum_valP i; rewrite inE => /eqP ->.
   by move: i j => /=; rewrite cards1 => i j; rewrite !ord1 expr0 eqxx.
-- move=> /eqP S2; have /cards1P [x /(congr1 (@setC _))] : #|~: S| == 1.
+- move=> /eqP S2; have /cards1P [x /(congr1 (@setC _))] : #|~: S| == 1%N.
     by rewrite cardsCs card_ord setCK S2.
   rewrite setCK => S_def; rewrite S_def in S2 *.
   rewrite row_free_unit unitmxE unitfE.
@@ -627,7 +630,7 @@ do 3?[rewrite leq_eqVlt orbC => /orP []; rewrite ?ltnS ?leqn0].
   apply/matrixP=> i j; rewrite !(mxE, castmxE) ?esymK /=.
   congr (sign _ ^+ _); apply/val_inj => /=.
   rewrite /enum_val -filter_index_enum /index_enum -enumT /= enumI3E.
-  have : i < 2 by rewrite (leq_trans (ltn_ord i)) ?S2.
+  have : (i < 2)%N by rewrite (leq_trans (ltn_ord i)) ?S2.
   case: x i {j S2 S_def} => [[|[|[|?]]] ?] [[|[|[|?]]] ?] //=;
   by rewrite !topredE ?inE -!val_eqE /= !inordK //=.
 - move=> /eqP S3; have /= S_def : S = setT.
@@ -638,7 +641,7 @@ do 3?[rewrite leq_eqVlt orbC => /orP []; rewrite ?ltnS ?leqn0].
   apply/matrixP => i j; rewrite !(mxE, castmxE) ?esymK /=.
   congr (sign _ ^+ _); apply/val_inj => /=.
   rewrite /enum_val enum_setT -enumT /= enumI3E /=.
-  have : i < 3 by rewrite (leq_trans (ltn_ord i)) ?cardsT ?card_ord.
+  have : (i < 3)%N by rewrite (leq_trans (ltn_ord i)) ?cardsT ?card_ord.
   by case: (val i) => [|[|[|?]]]; rewrite ?inordK //=.
 Qed.
 
