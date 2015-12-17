@@ -49,6 +49,10 @@ Proof. exact: row_free_inj. Qed.
 
 Local Open Scope ring_scope.
 
+Lemma mulrIb (R : zmodType) (x : R) : x != 0 ->
+   injective (fun b : bool => x *+ b).
+Proof. by move=> /negPf x0F [] [] //= /eqP; rewrite ?x0F // eq_sym x0F. Qed.
+
 Lemma inj_row_free (F : fieldType) (n p : nat) (A : 'M[F]_(n, p)) :
   (forall v : 'rV_n, v *m A = 0 -> v = 0) -> row_free A.
 Proof.
@@ -472,26 +476,18 @@ Qed.
 Proposition prop_10_84 n (S : {set X^n}) (a : X^n) : a \in adapt S ->
   (#|[set i | a i != 0%R]| <= trunc_log 2 #|S|)%N.
 Proof.
-set A := [set i | _]; move=> a_adapt; apply: trunc_log_max => //.
-pose AV0 := [set b : X^n | [forall i, (b i != 0) ==> (b i == a i)]].
-pose nullify (I : {set _}) : X ^ n := [ffun i => if i \in I then a i else 0].
-have AV0E : AV0 = nullify @: powerset A.
-  apply/setP => b; rewrite !inE.
-  apply/'forall_implyP/imsetP => [bP|[I]] /=; last first.
-    by rewrite powersetE => /subsetP IP -> i; rewrite !ffunE; case: ifP.
-  exists [set i | b i != 0]; move=> /(_ _ _) /eqP in bP; last first.
-    by apply/ffunP => i; rewrite ffunE in_set; have [//|/bP->] := altP eqP.
-  by rewrite powersetE; apply/subsetP => i; rewrite !in_set => bi; rewrite -bP.
-apply: (@leq_trans #|AV0|) => [{a_adapt}|]; last first.
-  rewrite -(card_adapt S) subset_leq_card //; apply/subsetP => b.
-  rewrite in_set => /forallP bP; apply: adapt_down_closed a_adapt => i.
-  by have := bP i; rewrite implyNb => /orP [/eqP ->|/eqP ->].
-rewrite AV0E card_in_imset; first by rewrite card_powerset leqnn.
-move=> I J /=; rewrite !in_set => PI PJ eqIJ; apply/setP => i.
-have := congr1 (fun f : {ffun _ -> _} => f i == 0) eqIJ; rewrite !ffunE.
-have [] := (subsetP PI i, subsetP PJ i); rewrite in_set.
-case: (i \in I) => [/(_ isT) /negPf ->|_];
-by case: (i \in J) => // /(_ isT) /negPf ->.
+pose I (a : X ^ n) : {set 'I_n} := [set i | a i != 0]; rewrite -/(I _).
+move=> a_adapt; apply: trunc_log_max => //.
+pose nullify (B : {set 'I_n}) : X ^ n := [ffun i => a i *+ (i \in B)].
+suff -> : (2 ^ #|I a| = #|nullify @: powerset (I a)|)%N.
+  rewrite -[#|S|]card_adapt subset_leq_card //; apply/subsetP => b.
+  move=> /imsetP [/= J]; rewrite inE => /subsetP JsubI -> {b}.
+  by apply: adapt_down_closed a_adapt => /= i; rewrite ffunE; case: (_ \in _).
+rewrite card_in_imset ?card_powerset // => J1 J2.
+rewrite !inE => /subsetP J1a /subsetP J2a eqJ; apply/setP => i.
+have [iI|/norP [/negPf-> /negPf->] //] := boolP ((i \in J1) || (i \in J2)).
+have /mulrIb : a i != 0 by move: iI => /orP [/J1a|/J2a]; rewrite inE.
+by apply; have /(congr1 ((@fun_of_fin _ _)^~ i)) := eqJ; rewrite !ffunE.
 Qed.
 
 Theorem adapt_adapted n (S : {set X^n}) : adapted S (adapt S).
