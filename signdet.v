@@ -518,15 +518,15 @@ rewrite (eq_bigr (fun x => l (extelt x (restrict t)) * M x (inord j)));
 pose G i t' := (\sum_(x in exts S t') l (extelt x t') * M x i).
 rewrite /= in G *; rewrite -/(G _ _).
 have rt : restrict t \in Xi r S by rewrite inE extrt.
-suff : \row_(r < #|Xi r S|) G (inord j) (enum_val r) == 0.
+suff : \row_(p < #|Xi r S|) G (inord j) (enum_val p) == 0.
   move=> /eqP /rowP /(_ (enum_rank_in rt (restrict t))).
   by rewrite !mxE ?enum_rankK_in //.
 have /row_free_inj /raddf_eq0 /= <- := IHn (Xi r S).
 apply/eqP/rowP => m; rewrite !mxE (reindex_enum _ rt) /=.
 evar (tmp : X ^ n -> F); rewrite (eq_bigr tmp); last first.
   by move=> x x_in; rewrite !mxE ?enum_rankK_in //= mulr_suml /tmp.
-rewrite /tmp {tmp} /G /=; set f := BIG_F.
-transitivity (\sum_(i in Xi 0 S) f i).
+rewrite /tmp {tmp} /G /=.
+set f := BIG_F; transitivity (\sum_(i in Xi 0 S) f i).
   symmetry; rewrite (big_setID (Xi r S)) /= (setIidPr _) ?leq_Xi //.
   rewrite [X in (_ + X)]big1 ?addr0 // => u.
   rewrite !inE -leqNgt => /andP [u_small _].
@@ -541,8 +541,7 @@ rewrite -[RHS]LN0_eq0; symmetry; apply: eq_big => [u|u uS].
   by have [/restrict_inW|//] := boolP (u \in S).
 rewrite !mxE ?extE ?enum_rankK_in /l ?mat_coefS ?extE ?mulrA // extelt_in.
 move: (enum_val m) (enum_valP m) => /= b b_in; rewrite inE in_adapt ?extE.
-apply: subsetP b_in; rewrite subset_adapt // leq_Xi //.
-rewrite -ltnS inordK //= -?extrt //.
+apply: subsetP b_in; rewrite subset_adapt // leq_Xi // -ltnS inordK -?extrt //.
 by rewrite (leq_trans (ltn_ord j)) ?exts_leq.
 Qed.
 
