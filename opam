@@ -1,0 +1,23 @@
+opam-version: "2.0"
+license: "CECILL-C"
+maintainer: "anonymous@example.com"
+authors: []
+build: [
+  [make "INSTMODE=global" "config"]
+  [make "-j%{jobs}%"]
+]
+install: [
+  [make "install"]
+]
+depends: [
+  "coq" { ((>= "8.10" & < "8.13~") | = "dev") }
+  "coq-mathcomp-field"       {(>= "1.11.0" & < "1.12~")}
+]
+synopsis: "A multivariate sign determination algorithm"
+
+tags: [
+  "category:Mathematics/Real Algebraic Geometry"
+  "keyword: real algebraic geometry"
+  "logpath: mathcomp.cad"
+  "date:2020-00-23"
+]
