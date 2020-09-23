@@ -1,13 +1,12 @@
 From mathcomp Require Import ssreflect ssrfun ssrbool eqtype ssrnat seq choice.
-From mathcomp Require Import path fintype finset finfun div bigop prime tuple.
-From mathcomp Require Import perm zmodp ssralg poly polydiv order ssrnum ssrint.
-From mathcomp Require Import rat matrix mxalgebra binomial path.
+From mathcomp Require Import div fintype finset finfun bigop prime zmodp.
+From mathcomp Require Import order ssralg ssrnum ssrint rat matrix mxalgebra.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive.
 
-Import GRing.Theory Num.Theory Num.Def Pdiv.Ring Pdiv.ComRing.
+Import GRing.Theory.
 Local Open Scope nat_scope.
 
 Section extrassr.
