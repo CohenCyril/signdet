@@ -353,7 +353,7 @@ apply: eq_bigr => i _; congr (_ * (_ *  _)); last congr (\det _).
 by apply/matrixP => /= k l; rewrite !mxE //=; case: l => [[|[|?]] ?].
 Qed.
 
-Lemma row_free_ctmat1 (S : {set 'I_3}) : row_free (mat1 ctmat3 S).
+Lemma row_free_ctmat (S : {set 'I_3}) : row_free (mat1 ctmat3 S).
 Proof.
 pose M S := \matrix_(i < #|S|, j < #|S|) sign (enum_val i) ^+ j.
 have := subset_leq_card (subsetT S); rewrite cardsT card_ord => cardS.
@@ -399,6 +399,6 @@ do 3?[rewrite leq_eqVlt orbC => /orP []; rewrite ?ltnS ?leqn0].
 Qed.
 
 Theorem ctmat_adapted n (S : {set 'I_3 ^ n}) : adapted ctmat3 S (adapt S).
-Proof. exact/adapt_adapted/row_free_ctmat1. Qed.
+Proof. exact/adapt_adapted/row_free_ctmat. Qed.
 
 End Signdet3.
