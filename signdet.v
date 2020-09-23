@@ -248,22 +248,18 @@ pose l t := L 0 (enum_rank_in s_in t); rewrite /= in l; rewrite -/(l _).
 have [r] := ubnPleq #|compl S (rem t)|; elim: r => [|r IHr] in t t_in *.
   by rewrite leqn0 cards_eq0 (negPf (compl_rem_neq0 _)).
 rewrite leq_eqVlt => /predU1P [extrt|]; last exact: IHr.
-suff: \row_(j < #|compl S (rem t)|)
-       l (ext (enum_val j) (rem t)) == 0.
+suff: \row_(j < #|compl S (rem t)|) l (ext (enum_val j) (rem t)) == 0.
   move=> /eqP /rowP /(_ (enum_rank_in (ord0_in_compl t_in) (t 0))).
   by rewrite !mxE ?enum_rankK_in ?ord0_in_compl ?extE.
 have /(@row_free_inj _ 1) := row_free_mat1 (compl S (rem t)).
 rewrite -[mulmx^~ _]/(mulmxr _) => /raddf_eq0 <-.
-apply/eqP/rowP => /= j; rewrite !mxE /=.
-rewrite (big_enum_rank (ord0_in_compl t_in)) /= -/t.
-rewrite (eq_bigr (fun x => l (ext x (rem t)) * M x (inord j)));
-  last by move=> x x_in; rewrite !mxE ?enum_rankK_in //= /tmp.
-pose G i t' := (\sum_(x in compl S t') l (ext x t') * M x i).
-rewrite /= in G *; rewrite -/(G _ _).
+apply/eqP/rowP => /= j; rewrite !mxE; under eq_bigr do rewrite !mxE.
+rewrite (big_enum_rank (ord0_in_compl t_in)) /=.
+under eq_bigr => x do [rewrite extE => x_in; rewrite ?(extE, enum_rankK_in)//].
+pose G i u := (\sum_(x in compl S u) l (ext x u) * M x i); rewrite -/(G _ _).
 have rt : rem t \in Xi r S by rewrite inE extrt.
-suff : \row_(p < #|Xi r S|) G (inord j) (enum_val p) == 0.
-  move=> /eqP /rowP /(_ (enum_rank_in rt (rem t))).
-  by rewrite !mxE ?enum_rankK_in //.
+suff /eqP/rowP : \row_(p < #|Xi r S|) G (inord j) (enum_val p) == 0.
+  by move=> /(_ (enum_rank_in rt (rem t))); rewrite !mxE ?enum_rankK_in.
 have /(@row_free_inj _ 1) := IHn (Xi r S).
 rewrite -[mulmx^~ _]/(mulmxr _) => /raddf_eq0 /= <-.
 apply/eqP/rowP => m; rewrite !mxE (big_enum_rank rt) /=.
@@ -273,7 +269,7 @@ set f := BIG_F; transitivity (\sum_(i in Xi 0 S) f i).
   rewrite [X in (_ + X)]big1 ?addr0 // => u.
   rewrite !inE -leqNgt => /andP [u_small _].
   by rewrite /f big1 // => x; rewrite inE => ?; rewrite IHr ?mul0r //= extK.
-rewrite pair_big_dep (reindex (fun a => (rem a, a 0))) /=; last first.
+rewrite pair_big_dep/= (reindex (fun a => (rem a, a 0))) /=; last first.
   by exists (fun p => ext p.2 p.1) => [x|[//? ?]]; rewrite !inE !extE.
 have /matrixP/(_ 0 (enum_rank_in a_in (ext (inord j) (enum_val m)))) := LN0.
 rewrite !mxE (big_enum_rank s_in) /= => LN0_eq0.
