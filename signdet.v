@@ -13,17 +13,19 @@ Section extrassr.
 
 Local Open Scope ring_scope.
 
-Lemma mulrIb (R : zmodType) (x : R) : x != 0 ->
+Lemma mulrIb (V : zmodType) (x : V) : x != 0 ->
    injective (fun b : bool => x *+ b).
 Proof. by move=> /negPf x0F [] [] //= /eqP; rewrite ?x0F // eq_sym x0F. Qed.
 
-Lemma inj_row_free (F : fieldType) (n p : nat) (A : 'M[F]_(n, p)) :
-  (forall v : 'rV_n, v *m A = 0 -> v = 0) -> row_free A.
+Lemma inj_row_free (F : fieldType) m n (A : 'M[F]_(m, n)) :
+  (forall v : 'rV_m, v *m A = 0 -> v = 0) -> row_free A.
 Proof.
-move=> Ainj; rewrite -kermx_eq0; apply/eqP.
-apply/row_matrixP => i; rewrite row0; apply/Ainj.
-by rewrite -row_mul mulmx_ker row0.
+move=> Ainj; rewrite -kermx_eq0; apply/eqP/row_matrixP => i.
+by rewrite row0; apply/Ainj; rewrite -row_mul mulmx_ker row0.
 Qed.
+
+Definition row_free_injr F m n p A : _ -> injective (@mulmxr A) :=
+  @row_free_inj F m n p A.
 
 Lemma det_mx11 (R : comRingType) (M : 'M[R]_1) : \det M = M 0 0.
 Proof. by rewrite {1}[M]mx11_scalar det_scalar. Qed.
@@ -251,8 +253,7 @@ rewrite leq_eqVlt => /predU1P [extrt|]; last exact: IHr.
 suff: \row_(j < #|compl S (rem t)|) l (ext (enum_val j) (rem t)) == 0.
   move=> /eqP /rowP /(_ (enum_rank_in (ord0_in_compl t_in) (t 0))).
   by rewrite !mxE ?enum_rankK_in ?ord0_in_compl ?extE.
-have /(@row_free_inj _ 1) := row_free_mat1 (compl S (rem t)).
-rewrite -[mulmx^~ _]/(mulmxr _) => /raddf_eq0 <-.
+have /(@row_free_injr _ 1)/raddf_eq0<- := row_free_mat1 (compl S (rem t)).
 apply/eqP/rowP => /= j; rewrite !mxE; under eq_bigr do rewrite !mxE.
 rewrite (big_enum_rank (ord0_in_compl t_in)) /=.
 under eq_bigr => x do [rewrite extE => x_in; rewrite ?(extE, enum_rankK_in)//].
@@ -260,8 +261,7 @@ pose G i u := (\sum_(x in compl S u) l (ext x u) * M x i); rewrite -/(G _ _).
 have rt : rem t \in Xi r S by rewrite inE extrt.
 suff /eqP/rowP : \row_(p < #|Xi r S|) G (inord j) (enum_val p) == 0.
   by move=> /(_ (enum_rank_in rt (rem t))); rewrite !mxE ?enum_rankK_in.
-have /(@row_free_inj _ 1) := IHn (Xi r S).
-rewrite -[mulmx^~ _]/(mulmxr _) => /raddf_eq0 /= <-.
+have /(@row_free_injr _ 1)/raddf_eq0 /= <- := IHn (Xi r S).
 apply/eqP/rowP => m; rewrite !mxE (big_enum_rank rt) /=.
 under eq_bigr => x x_in do rewrite !mxE ?enum_rankK_in //= mulr_suml.
 set f := BIG_F; transitivity (\sum_(i in Xi 0 S) f i).
